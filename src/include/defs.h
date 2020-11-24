@@ -35,74 +35,79 @@
 #define RADPORT 3636
 #define RENPORT 4444
 
-#define BOARD_ADDRESS "192.168.1.123"
+#define BOARD_ADDRESS "192.168.1.13"
 
 #define IMU_MSG_ID       0
 #define SPEED_MSG_ID     1
 #define ATTITUDE_MSG_ID  2
 #define RADIATION_MSG_ID 3
 
-#define SCREEN_ROWS 640
-#define SCREEN_COLS 1024
-#define IMAGE_ROWS 435
-#define IMAGE_COLS 435
-#define BLOCK_ROWS 145
-#define BLOCK_COLS 145
-
+#define MAX_IMAGESIZE 40090
 
 #include <stdint.h>
-#include <sys/time.h>
 
-
-typedef struct timeval timeval;
 typedef struct
 {
-    timeval  msg_timestamp;
     uint32_t msg_id;
 } msg_header;
 
 typedef struct
 {
     msg_header header;
-    double ax;
-    double ay;
-    double az;
-    double gyrox;
-    double gyroy;
-    double gyroz;
-    double magnx;
-    double magny;
-    double magnz;
+    float ax;
+    float ay;
+    float az;
+    float gyrox;
+    float gyroy;
+    float gyroz;
+    float magnx;
+    float magny;
+    float magnz;
 } imu_msg;
+
 
 typedef struct
 {
     msg_header header;
-    double vx;
-    double vy;
-    double vz;
+    float vx;
+    float vy;
+    float vz;
 } speed_msg;
 
 typedef struct
 {
     msg_header header;
-    double pitch;
-    double roll;
-    double yaw;
+    float pitch;
+    float roll;
+    float yaw;
 } attitude_msg;
 
 typedef struct
 {
     msg_header header;
-    double CPM;
-    double uSv_h;
+    float CPM;
+    float uSv_h;
 } radiation_msg;
 
 typedef struct
 {
-    uint32_t row;
-    uint32_t col;
-    uint8_t data[BLOCK_ROWS][BLOCK_COLS][3];
+    uint16_t len;
+    uint8_t data[MAX_IMAGESIZE];
 } image_msg;
+
+typedef struct
+{
+  float angularSpeedY;
+  float angularSpeedX;
+  float rollAngle;
+  float pitchAngle;
+  float accelerationZ;
+  float accelerationY;
+  float accelerationX;
+  float speedZ;
+  float speedY;
+  float speedX;
+} arduino_out;
+
 
 #endif //DEFS_H
