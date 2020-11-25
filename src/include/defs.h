@@ -35,12 +35,13 @@
 #define RADPORT 3636
 #define RENPORT 4444
 
-#define BOARD_ADDRESS "192.168.1.13"
+#define PC_ADDRESS "192.168.1.14"
 
 #define IMU_MSG_ID       0
 #define SPEED_MSG_ID     1
 #define ATTITUDE_MSG_ID  2
 #define RADIATION_MSG_ID 3
+#define COMMAND_MSG_ID   4
 
 #define MAX_IMAGESIZE 40090
 
@@ -108,6 +109,28 @@ typedef struct
   float speedY;
   float speedX;
 } arduino_out;
+
+typedef enum
+{
+    DIR_FWD,
+    DIR_LFT,
+    DIR_RGT,
+    DIR_BWD,
+    DIR_NONE
+} dir_t;
+
+typedef struct
+{
+    msg_header header;
+    dir_t direction;
+    int8_t throttle_add;
+} command_msg;
+
+typedef struct
+{
+    msg_header header;
+    uint8_t throttle_state;
+} throttle_msg;
 
 
 #endif //DEFS_H

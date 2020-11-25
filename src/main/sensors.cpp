@@ -76,7 +76,7 @@ void init_serial(int fd, uint8_t vmin)
 
 void __attribute__((noreturn)) imu_task()
 {
-    int fd = open("/dev/ttyACM0", O_RDONLY | O_NOCTTY);
+    int fd = open("/dev/ttyACM1", O_RDONLY | O_NOCTTY);
     init_serial(fd, sizeof(arduino_out));
 
     int sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
@@ -116,16 +116,18 @@ void __attribute__((noreturn)) imu_task()
             att_out.pitch = from_arduino.pitchAngle;
             att_out.roll = from_arduino.rollAngle;
 
-            sendto(sock, reinterpret_cast<char*>(&imu_out), sizeof(imu_msg), 0, reinterpret_cast<struct sockaddr*>(&daddr), sizeof(struct sockaddr));
-            perror("Imu out");
-            sendto(sock, reinterpret_cast<char*>(&speed_out), sizeof(speed_msg), 0, reinterpret_cast<struct sockaddr*>(&daddr), sizeof(struct sockaddr));
-            perror("Speed out");
-            sendto(sock, reinterpret_cast<char*>(&att_out), sizeof(attitude_msg), 0, reinterpret_cast<struct sockaddr*>(&daddr), sizeof(struct sockaddr));
-            perror("Attitude out");
-            std::cout << "Angular speed: " << imu_out.gyrox << "\t" << imu_out.gyroy << std::endl;
-            std::cout << "Acc: " << imu_out.ax << "\t" << imu_out.ay << "\t" << imu_out.az << std::endl;
-            std::cout << "Speed: " << speed_out.vx << "\t" << speed_out.vy << "\t" << speed_out.vz << std::endl;
-            std::cout << "Attitude: " << att_out.roll << "\t" << att_out.pitch << std::endl << std::endl;
+            if (sendto(sock, reinterpret_cast<char*>(&imu_out), sizeof(imu_msg), 0, reinterpret_cast<struct sockaddr*>(&daddr), sizeof(struct sockaddr)) > 0)
+            {
+                std::cout << "Imu out: Success" << std::endl;
+            }
+            if (sendto(sock, reinterpret_cast<char*>(&speed_out), sizeof(speed_msg), 0, reinterpret_cast<struct sockaddr*>(&daddr), sizeof(struct sockaddr)) > 0)
+            {
+                std::cout << "Speed out: Success" << std::endl;
+            }
+            if (sendto(sock, reinterpret_cast<char*>(&att_out), sizeof(attitude_msg), 0, reinterpret_cast<struct sockaddr*>(&daddr), sizeof(struct sockaddr)) > 0)
+            {
+                std::cout << "Attitude out: Success" << std::endl;
+            }
         }
 
         tcflush(fd, TCIFLUSH);
@@ -153,7 +155,10 @@ void __attribute__((noreturn)) geiger_task()
         out.CPM = cpm;
         out.uSv_h = CPM_2_USV(out.CPM);
 
-        sendto(sock, &out, sizeof(radiation_msg), 0, reinterpret_cast<struct sockaddr*>(&daddr), sizeof(struct sockaddr_in));
-        perror("Geiger out");
+        if (sendto(sock, &out, sizeof(radiation_msg), 0, reinterpret_cast<struct sockaddr*>(&daddr), sizeof(struct sockaddr_in)) > 0)
+        {
+            std::cout << "Geiger out: Success" << std::endl;
+        }
+
     }
 }

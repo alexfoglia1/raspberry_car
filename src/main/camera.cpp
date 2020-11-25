@@ -51,6 +51,7 @@ void __attribute__((noreturn)) camera_task()
         {
             exit(EXIT_FAILURE);
 		}
+
 		std::vector<int> params;
         std::vector<uint8_t> buffer;
 
