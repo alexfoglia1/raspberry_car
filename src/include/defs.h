@@ -34,16 +34,26 @@
 #define ATTPORT 9999
 #define RADPORT 3636
 #define RENPORT 4444
-
-#define PC_ADDRESS "192.168.1.14"
+#define HLTPORT 1111
 
 #define IMU_MSG_ID       0
 #define SPEED_MSG_ID     1
 #define ATTITUDE_MSG_ID  2
 #define RADIATION_MSG_ID 3
 #define COMMAND_MSG_ID   4
+#define HLT_MSG_ID       5
+#define JS_XY_MSG_ID     6
+#define JS_TH_MSG_ID     7
+#define JS_BR_MSG_ID     8
 
 #define MAX_IMAGESIZE 40090
+
+#define PC_ADDRESS "192.168.1.14"
+
+#define BREAK_THRESHOLD_DIR_STRAIGHT 0x20
+#define BREAK_THRESHOLD_DIR_LATERAL  0x40
+#define THROTTLE_MAX 0x7F
+#define THROTTLE_MIN 0x70
 
 #include <stdint.h>
 
@@ -52,63 +62,50 @@ typedef struct
     uint32_t msg_id;
 } msg_header;
 
-typedef struct
+typedef struct __attribute__((packed))
 {
     msg_header header;
-    float ax;
-    float ay;
-    float az;
-    float gyrox;
-    float gyroy;
-    float gyroz;
-    float magnx;
-    float magny;
-    float magnz;
+    double timestamp;
+    double ax;
+    double ay;
+    double az;
+    double gyrox;
+    double gyroy;
+    double gyroz;
+    double magnx;
+    double magny;
+    double magnz;
 } imu_msg;
 
 
-typedef struct
+typedef struct __attribute__((packed))
 {
     msg_header header;
-    float vx;
-    float vy;
-    float vz;
+    double vx;
+    double vy;
+    double vz;
 } speed_msg;
 
-typedef struct
+typedef struct __attribute__((packed))
 {
     msg_header header;
-    float pitch;
-    float roll;
-    float yaw;
+    double pitch;
+    double roll;
+    double yaw;
 } attitude_msg;
 
 typedef struct
 {
     msg_header header;
-    float CPM;
-    float uSv_h;
+    double CPM;
+    double uSv_h;
 } radiation_msg;
 
-typedef struct
+typedef struct __attribute__((packed))
 {
     uint16_t len;
     uint8_t data[MAX_IMAGESIZE];
 } image_msg;
-
-typedef struct
-{
-  float angularSpeedY;
-  float angularSpeedX;
-  float rollAngle;
-  float pitchAngle;
-  float accelerationZ;
-  float accelerationY;
-  float accelerationX;
-  float speedZ;
-  float speedY;
-  float speedX;
-} arduino_out;
 
 typedef enum
 {
@@ -119,18 +116,42 @@ typedef enum
     DIR_NONE
 } dir_t;
 
-typedef struct
+typedef struct __attribute__((packed))
 {
     msg_header header;
     dir_t direction;
     int8_t throttle_add;
 } command_msg;
 
-typedef struct
+typedef struct __attribute__((packed))
 {
     msg_header header;
     uint8_t throttle_state;
 } throttle_msg;
 
+typedef struct __attribute__((packed))
+{
+    msg_header header;
+    bool running;
+} health_status_msg;
+
+typedef struct __attribute__((packed))
+{
+    msg_header header;
+    int8_t x_axis;
+    int8_t y_axis;
+}  joystick_xy_msg;
+
+typedef struct __attribute__((packed))
+{
+    msg_header header;
+    uint8_t throttle_state;
+} joystick_throttle_msg;
+
+typedef struct __attribute__((packed))
+{
+    msg_header header;
+    uint8_t backward;
+} joystick_break_msg;
 
 #endif //DEFS_H

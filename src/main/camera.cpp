@@ -17,16 +17,7 @@
 #include <opencv2/imgproc.hpp>
 #include <stdio.h>
 
-#define COLOR_ROWS 80
-#define COLOR_COLS 250
-#define MAX_IMAGESIZE 40090
-
-typedef struct
-{
-    uint16_t len;
-    uint8_t data[MAX_IMAGESIZE];
-} image_msg;
-
+#include "defs.h"
 
 void __attribute__((noreturn)) camera_task()
 {
@@ -37,22 +28,27 @@ void __attribute__((noreturn)) camera_task()
     memset(&vaddr, 0x00, sizeof(struct sockaddr_in));
 
     vaddr.sin_family = AF_INET;
-    vaddr.sin_addr.s_addr = inet_addr("192.168.1.14");
+    vaddr.sin_addr.s_addr = inet_addr(PC_ADDRESS);
     vaddr.sin_port = htons(4321);
+
     if (!capture.isOpened())
     {
         exit(EXIT_FAILURE);
-	}
+    }
 
     cv::Mat frame;
     while (1)
     {
+	//printf("LOOP START\n");
         if (!capture.read(frame))
         {
-            exit(EXIT_FAILURE);
-		}
 
-		std::vector<int> params;
+	    printf("ERROR IN CAPTURE\n");
+            exit(EXIT_FAILURE);
+	}
+	//printf("CAPTURED!!\n");
+	cv::flip(frame, frame, -1);
+	std::vector<int> params;
         std::vector<uint8_t> buffer;
 
         params.push_back(cv::IMWRITE_JPEG_QUALITY);
@@ -67,8 +63,12 @@ void __attribute__((noreturn)) camera_task()
         }
         if(sendto(sock, reinterpret_cast<char*>(&outmsg), sizeof(outmsg), 0, reinterpret_cast<struct sockaddr*>(&vaddr), sizeof(vaddr)) > 0)
         {
-            std::cout << "Video out: Success" << std::endl;
+            //std::cout << "Video out: Success" << std::endl;
+        }
+        else
+	{
+            perror("Camera task");
         }
 
-	}
+    }
 }

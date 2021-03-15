@@ -17,6 +17,9 @@
 #include <stdbool.h>
 #include <iostream>
 #include <pcf8591.h>
+#include <sys/time.h>
+#include <math.h>
+
 
 #define CPM_2_USV(cpm) (cpm/220.f)
 
@@ -41,6 +44,11 @@ int read_cpm(int fd)
     memset(buf, 0x00, 256);
 
     ssize_t lenread = read(fd, buf, 1);
+    if(lenread == -1)
+    {
+        perror("Geiger task");
+        exit(EXIT_FAILURE);
+    }
     while(lenread >= 0 && !strends(buf, "\n\n", lenread, 2))
     {
         lenread += read(fd, buf + lenread, 1);
@@ -76,61 +84,84 @@ void init_serial(int fd, uint8_t vmin)
 
 void __attribute__((noreturn)) imu_task()
 {
-    int fd = open("/dev/ttyACM1", O_RDONLY | O_NOCTTY);
-    init_serial(fd, sizeof(arduino_out));
+    int melopero_interface = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    struct sockaddr_in saddr;
+    memset(&saddr, 0x00, sizeof(struct sockaddr_in));
+    saddr.sin_family = AF_INET;
+    saddr.sin_addr.s_addr = INADDR_ANY;
+    saddr.sin_port = htons(IMUPORT);
+
+    std::cout << "Port to local imu driver: " << IMUPORT << std::endl;
+
+    bind(melopero_interface, reinterpret_cast<struct sockaddr*>(&saddr), sizeof(struct sockaddr));
 
     int sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     struct sockaddr_in daddr;
     memset(&daddr, 0x00, sizeof(struct sockaddr_in));
     daddr.sin_family = AF_INET;
-    daddr.sin_addr.s_addr = inet_addr("192.168.1.14");
+    daddr.sin_addr.s_addr = inet_addr(PC_ADDRESS);
     daddr.sin_port = htons(DATPORT);
 
-    imu_msg imu_out;
+    imu_msg imu_m1, imu_out;
     speed_msg speed_out;
     attitude_msg att_out;
     memset(&imu_out, 0x00, sizeof(imu_msg));
     memset(&speed_out, 0x00, sizeof(speed_msg));
     memset(&att_out, 0x00, sizeof(attitude_msg));
+
+    double vx, vy, vz, yaw, pitch, roll;
+    vx = vy = vz = 0.0;
+    yaw = pitch = roll = 0.0;
+
+    double t0 = -1;
     while(1)
     {
-        arduino_out from_arduino;
-        memset(&from_arduino, 0x00, sizeof(from_arduino));
-        if(read(fd, &from_arduino, sizeof(from_arduino)) == sizeof(from_arduino))
+        memset(&imu_out, 0x00, sizeof(imu_out));
+        ssize_t lenread;
+        if((lenread = recv(melopero_interface, &imu_out, sizeof(imu_out), 0)) > 0)
         {
-            imu_out.header.msg_id = IMU_MSG_ID;
-            imu_out.ax = from_arduino.accelerationX;
-            imu_out.ay = from_arduino.accelerationY;
-            imu_out.az = from_arduino.accelerationZ;
-            imu_out.gyrox = from_arduino.angularSpeedX;
-            imu_out.gyroy = from_arduino.angularSpeedY;
-            imu_out.magnx = imu_out.magny = imu_out.magnz = 0.0;
-
-            speed_out.header.msg_id = SPEED_MSG_ID;
-            speed_out.vx = from_arduino.speedX;
-            speed_out.vy = from_arduino.speedY;
-            speed_out.vz = from_arduino.speedZ;
-
-            att_out.header.msg_id = ATTITUDE_MSG_ID;
-            att_out.yaw = 0;
-            att_out.pitch = from_arduino.pitchAngle;
-            att_out.roll = from_arduino.rollAngle;
-
-            if (sendto(sock, reinterpret_cast<char*>(&imu_out), sizeof(imu_msg), 0, reinterpret_cast<struct sockaddr*>(&daddr), sizeof(struct sockaddr)) > 0)
+            if(t0 < 0)
             {
-                std::cout << "Imu out: Success" << std::endl;
+                t0 = imu_out.timestamp;
+                imu_m1 = imu_out;
             }
-            if (sendto(sock, reinterpret_cast<char*>(&speed_out), sizeof(speed_msg), 0, reinterpret_cast<struct sockaddr*>(&daddr), sizeof(struct sockaddr)) > 0)
+            else
             {
-                std::cout << "Speed out: Success" << std::endl;
-            }
-            if (sendto(sock, reinterpret_cast<char*>(&att_out), sizeof(attitude_msg), 0, reinterpret_cast<struct sockaddr*>(&daddr), sizeof(struct sockaddr)) > 0)
-            {
-                std::cout << "Attitude out: Success" << std::endl;
+                double dt_s = imu_out.timestamp - t0;
+                t0 = imu_out.timestamp;
+		
+                imu_out.header.msg_id = IMU_MSG_ID;
+                vx += dt_s * imu_m1.ax;
+                vy += dt_s * imu_m1.ay;
+                vz += dt_s * imu_m1.az;
+                
+                yaw 	+= dt_s * imu_m1.gyroz;
+                pitch	+= dt_s * imu_m1.gyroy;
+                roll	+= dt_s * imu_m1.gyrox;
+
+                imu_m1 = imu_out;
+
+                speed_out.header.msg_id = SPEED_MSG_ID;
+                speed_out.vx = vx;
+                speed_out.vy = vy;
+                speed_out.vz = vz;
+
+                att_out.header.msg_id = ATTITUDE_MSG_ID;
+                att_out.yaw = yaw;
+                att_out.pitch = pitch;
+                att_out.roll = roll;
+
+                sendto(sock, reinterpret_cast<char*>(&imu_out), sizeof(imu_msg), 0, reinterpret_cast<struct sockaddr*>(&daddr), sizeof(struct sockaddr));
+                sendto(sock, reinterpret_cast<char*>(&speed_out), sizeof(speed_msg), 0, reinterpret_cast<struct sockaddr*>(&daddr), sizeof(struct sockaddr));
+                sendto(sock, reinterpret_cast<char*>(&att_out), sizeof(attitude_msg), 0, reinterpret_cast<struct sockaddr*>(&daddr), sizeof(struct sockaddr));
             }
         }
+        else if(lenread < 0)
+        {
+            perror("IMU task");
+            exit(EXIT_FAILURE);
+        }
 
-        tcflush(fd, TCIFLUSH);
     };
 
 }
@@ -143,7 +174,7 @@ void __attribute__((noreturn)) geiger_task()
     struct sockaddr_in daddr;
     memset(&daddr, 0x00, sizeof(struct sockaddr_in));
     daddr.sin_family = AF_INET;
-    daddr.sin_addr.s_addr = inet_addr("192.168.1.14");
+    daddr.sin_addr.s_addr = inet_addr(PC_ADDRESS);
     daddr.sin_port = htons(DATPORT);
 
     while(1)
