@@ -48,14 +48,20 @@
 
 #define MAX_IMAGESIZE 40090
 
-#define PC_ADDRESS "192.168.1.14"
-
 #define BREAK_THRESHOLD_DIR_STRAIGHT 0x20
 #define BREAK_THRESHOLD_DIR_LATERAL  0x40
 #define THROTTLE_MAX 0x7F
 #define THROTTLE_MIN 0x70
 
+#define WHOAMI_RP 0x00
+#define WHOAMI_PC 0x01
+#define WHOAMI_PH 0x02
+
 #include <stdint.h>
+#include <string>
+
+extern std::string PC_ADDRESS;
+extern std::string PH_ADDRESS;
 
 typedef struct
 {
@@ -132,7 +138,7 @@ typedef struct __attribute__((packed))
 typedef struct __attribute__((packed))
 {
     msg_header header;
-    bool running;
+    uint8_t whoami;
 } health_status_msg;
 
 typedef struct __attribute__((packed))

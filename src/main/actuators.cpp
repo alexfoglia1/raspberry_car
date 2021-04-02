@@ -27,7 +27,7 @@ void distribute_speed(uint8_t speed_magnitude)
     double right_percentage = 1.0 - left_percentage;
 
 
-    double right_speed = _min_(MAX_SPEED, speed_magnitude * 2 * left_percentage); //was left_percentage
+    double right_speed = _min_(MAX_SPEED, speed_magnitude * 2 * left_percentage);
     double left_speed =  _min_(MAX_SPEED, speed_magnitude * 2 * right_percentage);
 
     uint8_t ils = static_cast<uint8_t>(left_speed);
@@ -70,7 +70,6 @@ void set_motors()
             usleep(100000);
             setMotorRight();
          }
-
     }
 
     if (direction_state == DIR_FWD)
@@ -108,7 +107,7 @@ void __attribute__((noreturn)) actuators_task()
 
     memset(&daddr, 0x00, sizeof(struct sockaddr_in));
     daddr.sin_family = AF_INET;
-    daddr.sin_addr.s_addr = inet_addr(PC_ADDRESS);
+    daddr.sin_addr.s_addr = inet_addr(PC_ADDRESS.c_str());
     daddr.sin_port = htons(DATPORT);
 
     bind(serversock, reinterpret_cast<struct sockaddr*>(&saddr), sizeof(struct sockaddr_in));
@@ -134,7 +133,7 @@ void __attribute__((noreturn)) actuators_task()
                 bool is_straight = (last_direction_state == DIR_BWD || last_direction_state == DIR_FWD);
                 bool is_lateral  = (last_direction_state == DIR_LFT || last_direction_state == DIR_RGT);
                 is_brake = (throttle_state > BREAK_THRESHOLD_DIR_STRAIGHT && is_straight && cmd_in.throttle_add == 0x70) ||
-                       (throttle_state > BREAK_THRESHOLD_DIR_LATERAL && is_lateral  && cmd_in.throttle_add == 0x70) ;
+                           (throttle_state > BREAK_THRESHOLD_DIR_LATERAL && is_lateral  && cmd_in.throttle_add == 0x70) ;
 
                 int32_t n_throttle_state_s32 = static_cast<int32_t>(throttle_state) + static_cast<int32_t>(cmd_in.throttle_add);
                 throttle_state = cmd_in.throttle_add == THROTTLE_MIN ? 0x00 :
@@ -154,24 +153,29 @@ void __attribute__((noreturn)) actuators_task()
             else if (cmd_in.header.msg_id == JS_XY_MSG_ID)
             {
                 memcpy(&js_xy_in, &cmd_in, sizeof(joystick_xy_msg));
-                //printf("x axis(%d) y axis(%d)\n", js_xy_in.x_axis, js_xy_in.y_axis);
+                //printf("x axis(%d)\n", js_xy_in.x_axis);
                 x_axis = js_xy_in.x_axis;
                 last_direction_state = DIR_FWD;
+                distribute_speed(throttle_state);
+
             }
             else if(cmd_in.header.msg_id == JS_BR_MSG_ID)
             {
                 memcpy(&js_br_in, &cmd_in, sizeof(joystick_break_msg));
-
+                last_direction_state = DIR_BWD;
                 setMotorBackward();
+		//printf("received backward(%d)\n", js_br_in.backward);
                 distribute_speed(js_br_in.backward);
+                throttle_state = js_br_in.backward;
             }
             else if (cmd_in.header.msg_id == JS_TH_MSG_ID)
             {
                 memcpy(&js_th_in, &cmd_in, sizeof(joystick_throttle_msg));
-
+                last_direction_state = DIR_FWD;
                 setMotorForward();
                 distribute_speed(js_th_in.throttle_state);
-            }
+           	throttle_state = js_th_in.throttle_state; 
+	   }
 
             cmd_resp.header.msg_id = COMMAND_MSG_ID;
             cmd_resp.throttle_state = throttle_state;

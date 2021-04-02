@@ -15,12 +15,15 @@ ${CMAKE_SOURCE_DIR}/src/include/camera.h
 ${CMAKE_SOURCE_DIR}/src/include/actuators.h
 ${CMAKE_SOURCE_DIR}/src/include/health.h
 ${CMAKE_SOURCE_DIR}/src/include/motors.h
+${CMAKE_SOURCE_DIR}/src/include/kalmanfilter.h
 
 ${CMAKE_SOURCE_DIR}/src/main/sensors.cpp
 ${CMAKE_SOURCE_DIR}/src/main/camera.cpp
 ${CMAKE_SOURCE_DIR}/src/main/actuators.cpp
 ${CMAKE_SOURCE_DIR}/src/main/health.cpp
 ${CMAKE_SOURCE_DIR}/src/main/motors.cpp
+${CMAKE_SOURCE_DIR}/src/main/kalmanfilter.cpp
+
 ${CMAKE_SOURCE_DIR}/src/main/main.cpp
 )
 

@@ -21,15 +21,20 @@
 
 void __attribute__((noreturn)) camera_task()
 {
-	cv::VideoCapture capture(0);
+    cv::VideoCapture capture(0);
     int sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-    struct sockaddr_in daddr, vaddr;
-    memset(&daddr, 0x00, sizeof(struct sockaddr_in));
-    memset(&vaddr, 0x00, sizeof(struct sockaddr_in));
+    struct sockaddr_in pcaddr, phaddr;
 
-    vaddr.sin_family = AF_INET;
-    vaddr.sin_addr.s_addr = inet_addr(PC_ADDRESS);
-    vaddr.sin_port = htons(4321);
+    memset(&pcaddr, 0x00, sizeof(struct sockaddr_in));
+    memset(&phaddr, 0x00, sizeof(struct sockaddr_in));
+
+    pcaddr.sin_family = AF_INET;
+    pcaddr.sin_addr.s_addr = inet_addr(PC_ADDRESS.c_str());
+    pcaddr.sin_port = htons(VIDPORT);
+
+    phaddr.sin_family = AF_INET;
+    phaddr.sin_addr.s_addr = inet_addr(PH_ADDRESS.c_str());
+    phaddr.sin_port = htons(VIDPORT);
 
     if (!capture.isOpened())
     {
@@ -39,36 +44,40 @@ void __attribute__((noreturn)) camera_task()
     cv::Mat frame;
     while (1)
     {
-	//printf("LOOP START\n");
         if (!capture.read(frame))
         {
-
-	    printf("ERROR IN CAPTURE\n");
             exit(EXIT_FAILURE);
-	}
-	//printf("CAPTURED!!\n");
-	cv::flip(frame, frame, -1);
-	std::vector<int> params;
+        }
+
+        cv::flip(frame, frame, -1);
+        std::vector<int> params;
         std::vector<uint8_t> buffer;
 
         params.push_back(cv::IMWRITE_JPEG_QUALITY);
         params.push_back(60);
         cv::imencode(".jpg", frame, buffer, params);
-        
+
         image_msg outmsg;
         outmsg.len = static_cast<uint16_t>(buffer.size());
         for(uint16_t i = 0; i < outmsg.len; i++)
         {
             outmsg.data[i] = buffer[i];
         }
-        if(sendto(sock, reinterpret_cast<char*>(&outmsg), sizeof(outmsg), 0, reinterpret_cast<struct sockaddr*>(&vaddr), sizeof(vaddr)) > 0)
+        if(sendto(sock, reinterpret_cast<char*>(&outmsg), sizeof(outmsg), 0, reinterpret_cast<struct sockaddr*>(&pcaddr), sizeof(pcaddr)) > 0)
         {
-            //std::cout << "Video out: Success" << std::endl;
+             //printf("OK sendto PC\n");
         }
         else
-	{
-            perror("Camera task");
+        {
+             perror("Camera task to PC");
         }
-
+        if(sendto(sock, reinterpret_cast<char*>(&outmsg), sizeof(outmsg), 0, reinterpret_cast<struct sockaddr*>(&phaddr), sizeof(phaddr)) > 0)
+        {
+            //printf("OK sendto PHONE\n");
+        }
+        else
+        {
+             perror("Camera task to PHONE");
+        }
     }
 }

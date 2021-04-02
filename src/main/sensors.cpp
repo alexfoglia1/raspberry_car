@@ -1,5 +1,6 @@
 #include "sensors.h"
 #include "defs.h"
+#include "kalmanfilter.h"
 
 #include <stdio.h>
 #include <errno.h>
@@ -22,6 +23,8 @@
 
 
 #define CPM_2_USV(cpm) (cpm/220.f)
+#define RAD_2_DEG(rad) (rad*180.0/M_PI)
+#define DEG_2_RAD(deg) (deg*M_PI/180.0)
 
 bool strends(char* str, const char* tok, ssize_t lenstr, ssize_t lentok)
 {
@@ -99,7 +102,7 @@ void __attribute__((noreturn)) imu_task()
     struct sockaddr_in daddr;
     memset(&daddr, 0x00, sizeof(struct sockaddr_in));
     daddr.sin_family = AF_INET;
-    daddr.sin_addr.s_addr = inet_addr(PC_ADDRESS);
+    daddr.sin_addr.s_addr = inet_addr(PC_ADDRESS.c_str());
     daddr.sin_port = htons(DATPORT);
 
     imu_msg imu_m1, imu_out;
@@ -112,6 +115,11 @@ void __attribute__((noreturn)) imu_task()
     double vx, vy, vz, yaw, pitch, roll;
     vx = vy = vz = 0.0;
     yaw = pitch = roll = 0.0;
+    KalmanFilter kFilterX, kFilterY;
+
+    double gyroXangle = 0.0, gyroYangle = 0.0; // Angle calculate using the gyro only
+    double compAngleX = 0.0, compAngleY = 0.0; // Calculated angle using a complementary filter
+    double kalAngleX = 0.0, kalAngleY = 0.0; // Calculated angle using a Kalman filter
 
     double t0 = -1;
     while(1)
@@ -136,9 +144,33 @@ void __attribute__((noreturn)) imu_task()
                 vz += dt_s * imu_m1.az;
                 
                 yaw 	+= dt_s * imu_m1.gyroz;
-                pitch	+= dt_s * imu_m1.gyroy;
-                roll	+= dt_s * imu_m1.gyrox;
+                roll  = RAD_2_DEG(atan(imu_m1.ay / sqrt(imu_m1.ax * imu_m1.ax + imu_m1.az * imu_m1.az)));
+                pitch = RAD_2_DEG(atan2(-imu_m1.ax, imu_m1.az));
+                double gyroXrate = imu_m1.gyrox / 131.0; // Convert to deg/s
+                double gyroYrate = imu_m1.gyroy / 131.0; // Convert to deg/s
+                // This fixes the transition problem when the accelerometer angle jumps between -180 and 180 degrees
+                if ((pitch < -90 && kalAngleY > 90) || (pitch > 90 && kalAngleY < -90)) {
+                    kFilterX.meas = pitch;
+                    compAngleY = pitch;
+                    kalAngleY = pitch;
+                    gyroYangle = pitch;
+                  } else
+                    kalAngleY = kFilterY.getMeasurement(pitch, gyroYrate, dt_s); // Calculate the angle using a Kalman filter
+                if (abs(kalAngleY) > 90)
+                    gyroXrate = -gyroXrate; // Invert rate, so it fits the restriced accelerometer reading
+                  kalAngleX = kFilterX.getMeasurement(roll, gyroXrate, dt_s); // Calculate the angle using a Kalman filter
 
+                  gyroXangle += gyroXrate * dt_s; // Calculate gyro angle without any filter
+                  gyroYangle += gyroYrate * dt_s;
+
+                  compAngleX = 0.93 * (compAngleX + gyroXrate * dt_s) + 0.07 * roll; // Calculate the angle using a Complimentary filter
+                  compAngleY = 0.93 * (compAngleY + gyroYrate * dt_s) + 0.07 * pitch;
+
+                  // Reset the gyro angle when it has drifted too much
+                  if (gyroXangle < -180 || gyroXangle > 180)
+                    gyroXangle = kalAngleX;
+                  if (gyroYangle < -180 || gyroYangle > 180)
+                    gyroYangle = kalAngleY;
                 imu_m1 = imu_out;
 
                 speed_out.header.msg_id = SPEED_MSG_ID;
@@ -148,8 +180,8 @@ void __attribute__((noreturn)) imu_task()
 
                 att_out.header.msg_id = ATTITUDE_MSG_ID;
                 att_out.yaw = yaw;
-                att_out.pitch = pitch;
-                att_out.roll = roll;
+                att_out.pitch = DEG_2_RAD(kalAngleX);
+                att_out.roll = DEG_2_RAD(kalAngleY);
 
                 sendto(sock, reinterpret_cast<char*>(&imu_out), sizeof(imu_msg), 0, reinterpret_cast<struct sockaddr*>(&daddr), sizeof(struct sockaddr));
                 sendto(sock, reinterpret_cast<char*>(&speed_out), sizeof(speed_msg), 0, reinterpret_cast<struct sockaddr*>(&daddr), sizeof(struct sockaddr));
@@ -174,7 +206,7 @@ void __attribute__((noreturn)) geiger_task()
     struct sockaddr_in daddr;
     memset(&daddr, 0x00, sizeof(struct sockaddr_in));
     daddr.sin_family = AF_INET;
-    daddr.sin_addr.s_addr = inet_addr(PC_ADDRESS);
+    daddr.sin_addr.s_addr = inet_addr(PC_ADDRESS.c_str());
     daddr.sin_port = htons(DATPORT);
 
     while(1)
