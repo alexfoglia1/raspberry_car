@@ -146,7 +146,7 @@ void __attribute__((noreturn)) imu_task()
                 yaw 	+= dt_s * imu_m1.gyroz;
                 roll  = RAD_2_DEG(atan(imu_m1.ay / sqrt(imu_m1.ax * imu_m1.ax + imu_m1.az * imu_m1.az)));
                 pitch = RAD_2_DEG(atan2(-imu_m1.ax, imu_m1.az));
-                double gyroXrate = imu_m1.gyrox / 131.0; // Convert to deg/s
+               /* double gyroXrate = imu_m1.gyrox / 131.0; // Convert to deg/s
                 double gyroYrate = imu_m1.gyroy / 131.0; // Convert to deg/s
                 // This fixes the transition problem when the accelerometer angle jumps between -180 and 180 degrees
                 if ((pitch < -90 && kalAngleY > 90) || (pitch > 90 && kalAngleY < -90)) {
@@ -171,7 +171,8 @@ void __attribute__((noreturn)) imu_task()
                     gyroXangle = kalAngleX;
                   if (gyroYangle < -180 || gyroYangle > 180)
                     gyroYangle = kalAngleY;
-                imu_m1 = imu_out;
+                */
+		imu_m1 = imu_out;
 
                 speed_out.header.msg_id = SPEED_MSG_ID;
                 speed_out.vx = vx;
@@ -180,8 +181,8 @@ void __attribute__((noreturn)) imu_task()
 
                 att_out.header.msg_id = ATTITUDE_MSG_ID;
                 att_out.yaw = yaw;
-                att_out.pitch = DEG_2_RAD(kalAngleX);
-                att_out.roll = DEG_2_RAD(kalAngleY);
+                att_out.pitch = pitch;// DEG_2_RAD(kalAngleX);
+                att_out.roll = roll;//DEG_2_RAD(kalAngleY);
 
                 sendto(sock, reinterpret_cast<char*>(&imu_out), sizeof(imu_msg), 0, reinterpret_cast<struct sockaddr*>(&daddr), sizeof(struct sockaddr));
                 sendto(sock, reinterpret_cast<char*>(&speed_out), sizeof(speed_msg), 0, reinterpret_cast<struct sockaddr*>(&daddr), sizeof(struct sockaddr));
