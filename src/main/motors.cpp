@@ -69,10 +69,25 @@ void applyMotorSpeed(uint8_t speed)
 {
     softPwmWrite(ENABLE_LEFT, speed);
     softPwmWrite(ENABLE_RIGHT, speed);
+
+    //double duty_left =  (double)(speed)/255.0;
+    //double duty_right = (double)(speed)/255.0;
+    //double v_out_left = duty_left * 5;
+    //double v_out_right = duty_right * 5;
+    //printf("v_out_left %f V\n", v_out_left);
+    //printf("v_out_right %f V\n\n", v_out_right);
 }
 
 void applyMotorLRSpeed(uint8_t speed_left, uint8_t speed_right)
 {
     softPwmWrite(ENABLE_LEFT, speed_left);
     softPwmWrite(ENABLE_RIGHT, speed_right);
+
+    //double duty_left =  (double)(speed_left)/255.0;
+    //double duty_right = (double)(speed_left)/255.0;
+    //double v_out_left = duty_left * 5;
+    //double v_out_right = duty_right * 5;
+    //printf("v_out_left %f V\n", v_out_left);
+    //printf("v_out_right %f V\n\n", v_out_right);
+
 }

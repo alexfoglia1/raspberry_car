@@ -1,6 +1,6 @@
 #include "sensors.h"
 #include "defs.h"
-#include "kalmanfilter.h"
+#include "attitude_estimator.h"
 
 #include <stdio.h>
 #include <errno.h>
@@ -22,9 +22,9 @@
 #include <math.h>
 
 
-#define CPM_2_USV(cpm) (cpm/220.f)
 #define RAD_2_DEG(rad) (rad*180.0/M_PI)
 #define DEG_2_RAD(deg) (deg*M_PI/180.0)
+#define MAX_READABLE_VOLTAGE_V 10.f //todo: se questa cosa cambia rivedi il partitore di tensione perchè attualmente divide per 2 :(
 
 bool strends(char* str, const char* tok, ssize_t lenstr, ssize_t lentok)
 {
@@ -40,27 +40,22 @@ bool strends(char* str, const char* tok, ssize_t lenstr, ssize_t lentok)
     return true;
 }
 
-int read_cpm(int fd)
+float read_voltage(int fd)
 {
     char buf[256];
 
     memset(buf, 0x00, 256);
 
     ssize_t lenread = read(fd, buf, 1);
-    if(lenread == -1)
-    {
-        perror("Geiger task");
-        exit(EXIT_FAILURE);
-    }
     while(lenread >= 0 && !strends(buf, "\n\n", lenread, 2))
     {
         lenread += read(fd, buf + lenread, 1);
     }
 
-    return atoi(buf);
+    return atof(buf) * MAX_READABLE_VOLTAGE_V;
 }
 
-void init_serial(int fd, uint8_t vmin)
+void init_serial(int fd)
 {
     struct termios serialPortSettings;
 
@@ -76,7 +71,6 @@ void init_serial(int fd, uint8_t vmin)
     serialPortSettings.c_iflag &= ~(IXON | IXOFF | IXANY);          /* Disable XON/XOFF flow control both i/p and o/p */
     serialPortSettings.c_iflag &= ~(ICANON | ECHO | ECHOE | ISIG);  /* Non Cannonical mode                            */
     serialPortSettings.c_oflag &= ~OPOST;/*No Output Processing*/
-    serialPortSettings.c_cc[VMIN] = vmin;
 
     if(tcsetattr(fd, TCSANOW, &serialPortSettings)!=0)
     {
@@ -85,6 +79,40 @@ void init_serial(int fd, uint8_t vmin)
     tcflush(fd, TCIFLUSH);
 }
 
+void __attribute__((noreturn)) voltage_task()
+{
+    int fd = open("/dev/ttyACM0", O_RDONLY);
+    init_serial(fd);
+
+    int sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    struct sockaddr_in daddr;
+    memset(&daddr, 0x00, sizeof(struct sockaddr_in));
+    daddr.sin_family = AF_INET;
+    daddr.sin_addr.s_addr = inet_addr(PC_ADDRESS.c_str());
+    daddr.sin_port = htons(VLTPORT);
+
+    voltage_msg voltage_out;
+    memset(&voltage_out, 0x00, sizeof(voltage_msg));
+    while(1)
+    {
+         voltage_out.msg_id = VOLTAGE_MSG_ID;
+         voltage_out.motor_voltage = read_voltage(fd);
+         
+         sendto(sock, reinterpret_cast<char*>(&voltage_out), sizeof(voltage_msg), 0, reinterpret_cast<struct sockaddr*>(&daddr), sizeof(struct sockaddr));
+    }
+}
+
+#include <time.h>
+#include <sys/time.h>
+
+double timestamp()
+{
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    return (double)(tv.tv_sec) + (double)(tv.tv_usec) * 1e-6;
+}
+
+
 void __attribute__((noreturn)) imu_task()
 {
     int melopero_interface = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
@@ -92,9 +120,7 @@ void __attribute__((noreturn)) imu_task()
     memset(&saddr, 0x00, sizeof(struct sockaddr_in));
     saddr.sin_family = AF_INET;
     saddr.sin_addr.s_addr = INADDR_ANY;
-    saddr.sin_port = htons(IMUPORT);
-
-    std::cout << "Port to local imu driver: " << IMUPORT << std::endl;
+    saddr.sin_port = htons(ATTPORT);
 
     bind(melopero_interface, reinterpret_cast<struct sockaddr*>(&saddr), sizeof(struct sockaddr));
 
@@ -103,91 +129,54 @@ void __attribute__((noreturn)) imu_task()
     memset(&daddr, 0x00, sizeof(struct sockaddr_in));
     daddr.sin_family = AF_INET;
     daddr.sin_addr.s_addr = inet_addr(PC_ADDRESS.c_str());
-    daddr.sin_port = htons(DATPORT);
+    daddr.sin_port = htons(ATTPORT);
 
-    imu_msg imu_m1, imu_out;
-    speed_msg speed_out;
     attitude_msg att_out;
-    memset(&imu_out, 0x00, sizeof(imu_msg));
-    memset(&speed_out, 0x00, sizeof(speed_msg));
     memset(&att_out, 0x00, sizeof(attitude_msg));
 
-    double vx, vy, vz, yaw, pitch, roll;
-    vx = vy = vz = 0.0;
-    yaw = pitch = roll = 0.0;
-    KalmanFilter kFilterX, kFilterY;
+    char imu_out[84];
+    
+    stateestimation::AttitudeEstimator Est;
+    Est.setMagCalib(0.68, -1.32, 0.0);     
+    Est.setPIGains(2.2, 2.65, 10, 1.25);
 
-    double gyroXangle = 0.0, gyroYangle = 0.0; // Angle calculate using the gyro only
-    double compAngleX = 0.0, compAngleY = 0.0; // Calculated angle using a complementary filter
-    double kalAngleX = 0.0, kalAngleY = 0.0; // Calculated angle using a Kalman filter
-
+    double yaw = 0.0;
     double t0 = -1;
+    double dt_s = 0;
     while(1)
     {
-        memset(&imu_out, 0x00, sizeof(imu_out));
+        memset(&imu_out, 0x00, 84);
         ssize_t lenread;
         if((lenread = recv(melopero_interface, &imu_out, sizeof(imu_out), 0)) > 0)
         {
-            if(t0 < 0)
-            {
-                t0 = imu_out.timestamp;
-                imu_m1 = imu_out;
-            }
-            else
-            {
-                double dt_s = imu_out.timestamp - t0;
-                t0 = imu_out.timestamp;
-		
-                imu_out.header.msg_id = IMU_MSG_ID;
-                vx += dt_s * imu_m1.ax;
-                vy += dt_s * imu_m1.ay;
-                vz += dt_s * imu_m1.az;
-                
-                yaw 	+= dt_s * imu_m1.gyroz;
-                roll  = RAD_2_DEG(atan(imu_m1.ay / sqrt(imu_m1.ax * imu_m1.ax + imu_m1.az * imu_m1.az)));
-                pitch = RAD_2_DEG(atan2(-imu_m1.ax, imu_m1.az));
-               /* double gyroXrate = imu_m1.gyrox / 131.0; // Convert to deg/s
-                double gyroYrate = imu_m1.gyroy / 131.0; // Convert to deg/s
-                // This fixes the transition problem when the accelerometer angle jumps between -180 and 180 degrees
-                if ((pitch < -90 && kalAngleY > 90) || (pitch > 90 && kalAngleY < -90)) {
-                    kFilterX.meas = pitch;
-                    compAngleY = pitch;
-                    kalAngleY = pitch;
-                    gyroYangle = pitch;
-                  } else
-                    kalAngleY = kFilterY.getMeasurement(pitch, gyroYrate, dt_s); // Calculate the angle using a Kalman filter
-                if (abs(kalAngleY) > 90)
-                    gyroXrate = -gyroXrate; // Invert rate, so it fits the restriced accelerometer reading
-                  kalAngleX = kFilterX.getMeasurement(roll, gyroXrate, dt_s); // Calculate the angle using a Kalman filter
-
-                  gyroXangle += gyroXrate * dt_s; // Calculate gyro angle without any filter
-                  gyroYangle += gyroYrate * dt_s;
-
-                  compAngleX = 0.93 * (compAngleX + gyroXrate * dt_s) + 0.07 * roll; // Calculate the angle using a Complimentary filter
-                  compAngleY = 0.93 * (compAngleY + gyroYrate * dt_s) + 0.07 * pitch;
-
-                  // Reset the gyro angle when it has drifted too much
-                  if (gyroXangle < -180 || gyroXangle > 180)
-                    gyroXangle = kalAngleX;
-                  if (gyroYangle < -180 || gyroYangle > 180)
-                    gyroYangle = kalAngleY;
-                */
-		imu_m1 = imu_out;
-
-                speed_out.header.msg_id = SPEED_MSG_ID;
-                speed_out.vx = vx;
-                speed_out.vy = vy;
-                speed_out.vz = vz;
-
-                att_out.header.msg_id = ATTITUDE_MSG_ID;
-                att_out.yaw = yaw;
-                att_out.pitch = pitch;// DEG_2_RAD(kalAngleX);
-                att_out.roll = roll;//DEG_2_RAD(kalAngleY);
-
-                sendto(sock, reinterpret_cast<char*>(&imu_out), sizeof(imu_msg), 0, reinterpret_cast<struct sockaddr*>(&daddr), sizeof(struct sockaddr));
-                sendto(sock, reinterpret_cast<char*>(&speed_out), sizeof(speed_msg), 0, reinterpret_cast<struct sockaddr*>(&daddr), sizeof(struct sockaddr));
-                sendto(sock, reinterpret_cast<char*>(&att_out), sizeof(attitude_msg), 0, reinterpret_cast<struct sockaddr*>(&daddr), sizeof(struct sockaddr));
-            }
+            double accx = * reinterpret_cast<double*>(&imu_out[12]);
+            double accy = * reinterpret_cast<double*>(&imu_out[20]);
+            double accz = * reinterpret_cast<double*>(&imu_out[28]);
+            double gyrox = DEG_2_RAD(* reinterpret_cast<double*>(&imu_out[36]));
+            double gyroy = DEG_2_RAD(* reinterpret_cast<double*>(&imu_out[44]));
+            double gyroz = DEG_2_RAD(* reinterpret_cast<double*>(&imu_out[52]));
+            double magnx = * reinterpret_cast<double*>(&imu_out[60]);
+            double magny = * reinterpret_cast<double*>(&imu_out[68]);
+            double magnz = * reinterpret_cast<double*>(&imu_out[76]);
+            
+            double act_t = timestamp();
+            dt_s = t0 < 0 ? 0.08 : act_t - t0;
+            
+            //printf("before update: dt_s(%f)\n", dt_s);
+            Est.update(dt_s, gyrox, gyroy, gyroz, accx, accy, accz, magnx, magny, magnz);
+            yaw += gyroz * dt_s;
+            t0 = act_t;
+            
+            double q[4];
+	        Est.getAttitude(q);
+	        
+	        att_out.header.msg_id = ATTITUDE_MSG_ID;
+            att_out.yaw = yaw;//Est.fusedYaw() + M_PI * Est.fusedHemi();
+            att_out.pitch = Est.fusedPitch();//+ M_PI * Est.fusedHemi();
+            att_out.roll = Est.fusedRoll();//+ M_PI * Est.fusedHemi();
+            //std::cout << "My attitude is (ZYX Euler): (" << Est.eulerYaw() << "," << Est.eulerPitch() << "," << Est.eulerRoll() << ")" << std::endl;
+	        //std::cout << "My attitude is (fused): (" << Est.fusedYaw() << "," << Est.fusedPitch() << "," << Est.fusedRoll() << "," << (Est.fusedHemi() ? 1 : -1) << ")" << "\n";
+            sendto(sock, reinterpret_cast<char*>(&att_out), sizeof(attitude_msg), 0, reinterpret_cast<struct sockaddr*>(&daddr), sizeof(struct sockaddr));
         }
         else if(lenread < 0)
         {
@@ -195,34 +184,6 @@ void __attribute__((noreturn)) imu_task()
             exit(EXIT_FAILURE);
         }
 
-    };
-
-}
-void __attribute__((noreturn)) geiger_task()
-{
-    int fd = open("/dev/ttyUSB0", O_RDONLY);
-    init_serial(fd, 3);
-
-    int sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-    struct sockaddr_in daddr;
-    memset(&daddr, 0x00, sizeof(struct sockaddr_in));
-    daddr.sin_family = AF_INET;
-    daddr.sin_addr.s_addr = inet_addr(PC_ADDRESS.c_str());
-    daddr.sin_port = htons(DATPORT);
-
-    while(1)
-    {
-        int cpm = static_cast<int>(read_cpm(fd));
-
-        radiation_msg out;
-        out.header.msg_id = RADIATION_MSG_ID;
-        out.CPM = cpm;
-        out.uSv_h = CPM_2_USV(out.CPM);
-
-        if (sendto(sock, &out, sizeof(radiation_msg), 0, reinterpret_cast<struct sockaddr*>(&daddr), sizeof(struct sockaddr_in)) > 0)
-        {
-            std::cout << "Geiger out: Success" << std::endl;
-        }
-
     }
+
 }

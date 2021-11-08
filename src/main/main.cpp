@@ -2,8 +2,9 @@
 #include "sensors.h"
 #include "actuators.h"
 #include "motors.h"
+#include "detector.h"
 #include "defs.h"
-#include "health.h"
+
 
 #include <iostream>
 #include <unistd.h>
@@ -14,8 +15,8 @@
 #include <stdio.h>
 #include <fstream>
 
-std::string PC_ADDRESS("192.168.1.15");
-std::string PH_ADDRESS("192.168.1.52");
+std::string PC_ADDRESS("192.168.1.19");
+
 
 void on_sigterm(int pid)
 {
@@ -32,7 +33,6 @@ int main(int argc, char** argv)
     if (argc > 2)
     {
         PC_ADDRESS = argv[1];
-        PH_ADDRESS = argv[2];
     }
     else
     {
@@ -53,18 +53,10 @@ int main(int argc, char** argv)
                 PC_ADDRESS = line[0];
         }
         std::cout << "PC ADDRESS(" << PC_ADDRESS << ")" << std::endl;
-
-        if(line[1].length() > 0)
-        {
-            PH_ADDRESS = line[1];
-        }
-        std::cout << "PHONE ADDRESS(" << PH_ADDRESS << ")" << std::endl;
-
     }
 
     signal(SIGTERM, on_sigterm);
 
-    int fpid = getpid();
     int pid = fork();
     if(pid == 0)
     {
@@ -75,14 +67,22 @@ int main(int argc, char** argv)
     pid = fork();
     if(pid == 0)
     {
+	
         camera_task();
+        exit(EXIT_SUCCESS);
+    }
+    
+    pid = fork();
+    if (pid == 0)
+    {
+        detect_task();
         exit(EXIT_SUCCESS);
     }
 
     pid = fork();
     if(pid == 0)
     {
-        geiger_task();
+        voltage_task();
         exit(EXIT_SUCCESS);
     }
 
@@ -97,13 +97,6 @@ int main(int argc, char** argv)
     if(pid == 0)
     {
         actuators_task();
-        exit(EXIT_SUCCESS);
-    }
-
-    pid = fork();
-    if(pid == 0)
-    {
-        //health_task(fpid);
         exit(EXIT_SUCCESS);
     }
 

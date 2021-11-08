@@ -103,14 +103,14 @@ void __attribute__((noreturn)) actuators_task()
     memset(&saddr, 0x00, sizeof(struct sockaddr_in));
     saddr.sin_family = AF_INET;
     saddr.sin_addr.s_addr = INADDR_ANY;
-    saddr.sin_port = htons(DATPORT);
-
+    saddr.sin_port = htons(THRPORT);
+    
     memset(&daddr, 0x00, sizeof(struct sockaddr_in));
     daddr.sin_family = AF_INET;
     daddr.sin_addr.s_addr = inet_addr(PC_ADDRESS.c_str());
-    daddr.sin_port = htons(DATPORT);
+    daddr.sin_port = htons(THRPORT);
 
-    bind(serversock, reinterpret_cast<struct sockaddr*>(&saddr), sizeof(struct sockaddr_in));
+    int res = bind(serversock, reinterpret_cast<struct sockaddr*>(&saddr), sizeof(struct sockaddr_in));
     
     motorPowerOn();
     set_motors();
@@ -124,10 +124,12 @@ void __attribute__((noreturn)) actuators_task()
         throttle_msg cmd_resp;
         socklen_t socklen;
         size_t maxrecvlen = sizeof(command_msg);
-
-        int recvok = recvfrom(serversock, &cmd_in, maxrecvlen, 0, reinterpret_cast<struct sockaddr*>(&saddr), &socklen);
+	
+        int recvok = recv(serversock, &cmd_in, maxrecvlen, 0);//, reinterpret_cast<struct sockaddr*>(&saddr), &socklen);
+        
         if (recvok)
         {
+            
             if (cmd_in.header.msg_id == COMMAND_MSG_ID)
             {
                 bool is_straight = (last_direction_state == DIR_BWD || last_direction_state == DIR_FWD);
