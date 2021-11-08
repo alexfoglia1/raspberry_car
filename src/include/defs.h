@@ -1,7 +1,7 @@
 #ifndef DEFS_H
 #define DEFS_H
 
-#define PROJNAME "Raspberry PI 4 Car Remote Controller v01.00"
+#define PROJNAME "Raspberry PI 4 Car v01.00"
 
 #define ERR_CREATESOCKDATA "Could not create data socket"
 #define ERR_BINDSOCKDATA "Could not bind data socket"
@@ -27,41 +27,35 @@
 #define OK_RADIATION "Received RADIATION msg"
 #define OK_IMAGE "Received IMAGE msg"
 
-#define DATPORT 1234
-#define VIDPORT 4321
-#define IMUPORT 7777
-#define VELPORT 8888
-#define ATTPORT 9999
-#define RADPORT 3636
-#define RENPORT 4444
-#define HLTPORT 1111
+#define ATTPORT 1111
+#define RENPORT 2222
+#define THRPORT 3333
+#define TGTPORT 4444
+#define VLTPORT 5555
+#define DETPORT 9999 //local only
 
-#define IMU_MSG_ID       0
-#define SPEED_MSG_ID     1
+#define VOLTAGE_MSG_ID   1
 #define ATTITUDE_MSG_ID  2
-#define RADIATION_MSG_ID 3
 #define COMMAND_MSG_ID   4
-#define HLT_MSG_ID       5
 #define JS_XY_MSG_ID     6
 #define JS_TH_MSG_ID     7
 #define JS_BR_MSG_ID     8
+#define TARGET_MSG_ID	 9
 
-#define MAX_IMAGESIZE 40090
+#define MAX_IMAGESIZE 60000
+#define IMAGE_ROWS    650
+#define IMAGE_COLS    1200
 
 #define BREAK_THRESHOLD_DIR_STRAIGHT 0x20
 #define BREAK_THRESHOLD_DIR_LATERAL  0x40
 #define THROTTLE_MAX 0x7F
 #define THROTTLE_MIN 0x70
-
-#define WHOAMI_RP 0x00
-#define WHOAMI_PC 0x01
-#define WHOAMI_PH 0x02
+#define MAX_TARGETS 10
 
 #include <stdint.h>
 #include <string>
 
 extern std::string PC_ADDRESS;
-extern std::string PH_ADDRESS;
 
 typedef struct
 {
@@ -70,27 +64,25 @@ typedef struct
 
 typedef struct __attribute__((packed))
 {
-    msg_header header;
-    double timestamp;
-    double ax;
-    double ay;
-    double az;
-    double gyrox;
-    double gyroy;
-    double gyroz;
-    double magnx;
-    double magny;
-    double magnz;
-} imu_msg;
+    uint32_t msg_id;
+    float motor_voltage;
+} voltage_msg;
 
+typedef struct __attribute__((packed))
+{
+    uint32_t x_pos;
+    uint32_t y_pos;
+    uint32_t width;
+    uint32_t height;
+    char description[100];
+} target_data;
 
 typedef struct __attribute__((packed))
 {
     msg_header header;
-    double vx;
-    double vy;
-    double vz;
-} speed_msg;
+    uint8_t n_targets;
+    target_data data[MAX_TARGETS];
+} target_msg;
 
 typedef struct __attribute__((packed))
 {
@@ -99,13 +91,6 @@ typedef struct __attribute__((packed))
     double roll;
     double yaw;
 } attitude_msg;
-
-typedef struct
-{
-    msg_header header;
-    double CPM;
-    double uSv_h;
-} radiation_msg;
 
 typedef struct __attribute__((packed))
 {
@@ -135,11 +120,6 @@ typedef struct __attribute__((packed))
     uint8_t throttle_state;
 } throttle_msg;
 
-typedef struct __attribute__((packed))
-{
-    msg_header header;
-    uint8_t whoami;
-} health_status_msg;
 
 typedef struct __attribute__((packed))
 {
