@@ -2,12 +2,12 @@
 #define MOTORS_H
 #include <stdint.h>
 
-#define ENABLE_RIGHT    15
-#define MOTOR_RIGHT1    1
-#define MOTOR_RIGHT2    16
-#define ENABLE_LEFT     0
-#define MOTOR_LEFT1     2
-#define MOTOR_LEFT2     3
+#define ENABLE_LEFT    15
+#define MOTOR_LEFT1    1
+#define MOTOR_LEFT2    16
+#define ENABLE_RIGHT     0
+#define MOTOR_RIGHT1     2
+#define MOTOR_RIGHT2     3
 
 #define MAX_SPEED       0xFF
 #define MIN_SPEED       0x00
