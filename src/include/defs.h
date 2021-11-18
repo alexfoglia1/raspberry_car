@@ -32,7 +32,7 @@
 #define THRPORT 3333
 #define TGTPORT 4444
 #define VLTPORT 5555
-#define DETPORT 9999 //local only
+#define DETPORT 9999 //tx to tegra
 
 #define VOLTAGE_MSG_ID   1
 #define ATTITUDE_MSG_ID  2
@@ -56,6 +56,7 @@
 #include <string>
 
 extern std::string PC_ADDRESS;
+extern std::string TEGRA_ADDRESS;
 
 typedef struct
 {

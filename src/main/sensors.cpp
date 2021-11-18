@@ -134,10 +134,11 @@ void __attribute__((noreturn)) imu_task()
     attitude_msg att_out;
     memset(&att_out, 0x00, sizeof(attitude_msg));
 
-    char imu_out[84];
+    const int imu_msg_dim = 84;
+    char imu_out[imu_msg_dim];
     
     stateestimation::AttitudeEstimator Est;
-    Est.setMagCalib(0.68, -1.32, 0.0);     
+    Est.setMagCalib(0.68, -1.32, 0.0);
     Est.setPIGains(2.2, 2.65, 10, 1.25);
 
     double yaw = 0.0;
@@ -145,24 +146,25 @@ void __attribute__((noreturn)) imu_task()
     double dt_s = 0;
     while(1)
     {
-        memset(&imu_out, 0x00, 84);
+        memset(&imu_out, 0x00, imu_msg_dim);
         ssize_t lenread;
-        if((lenread = recv(melopero_interface, &imu_out, sizeof(imu_out), 0)) > 0)
+        if (lenread = recv(melopero_interface, &imu_out, imu_msg_dim, 0) > 0)
         {
-            double accx = * reinterpret_cast<double*>(&imu_out[12]);
-            double accy = * reinterpret_cast<double*>(&imu_out[20]);
-            double accz = * reinterpret_cast<double*>(&imu_out[28]);
-            double gyrox = DEG_2_RAD(* reinterpret_cast<double*>(&imu_out[36]));
-            double gyroy = DEG_2_RAD(* reinterpret_cast<double*>(&imu_out[44]));
-            double gyroz = DEG_2_RAD(* reinterpret_cast<double*>(&imu_out[52]));
-            double magnx = * reinterpret_cast<double*>(&imu_out[60]);
-            double magny = * reinterpret_cast<double*>(&imu_out[68]);
-            double magnz = * reinterpret_cast<double*>(&imu_out[76]);
+
+            double accx  = *reinterpret_cast<double*>(&imu_out[12]);
+            double accy  = *reinterpret_cast<double*>(&imu_out[20]);
+            double accz  = *reinterpret_cast<double*>(&imu_out[28]);
+            double gyrox = DEG_2_RAD(*reinterpret_cast<double*>(&imu_out[36]));
+            double gyroy = DEG_2_RAD(*reinterpret_cast<double*>(&imu_out[44]));
+            double gyroz = DEG_2_RAD(*reinterpret_cast<double*>(&imu_out[52]));
+            double magnx = *reinterpret_cast<double*>(&imu_out[60]);
+            double magny = *reinterpret_cast<double*>(&imu_out[68]);
+            double magnz = *reinterpret_cast<double*>(&imu_out[76]);
             
             double act_t = timestamp();
-            dt_s = t0 < 0 ? 0.08 : act_t - t0;
+            dt_s = t0 < 0 ? 1.0/80.0 : act_t - t0;
             
-            //printf("before update: dt_s(%f)\n", dt_s);
+            //printf("before update: dt_s(%f) accx(%f) accy(%f) accz(%f) gyrox(%f) gyroy(%f) gyroz(%f)\n", dt_s, accx, accy, accz, gyrox, gyroy, gyroz);
             Est.update(dt_s, gyrox, gyroy, gyroz, accx, accy, accz, magnx, magny, magnz);
             yaw += gyroz * dt_s;
             t0 = act_t;
@@ -171,11 +173,11 @@ void __attribute__((noreturn)) imu_task()
 	        Est.getAttitude(q);
 	        
 	        att_out.header.msg_id = ATTITUDE_MSG_ID;
-            att_out.yaw = yaw;//Est.fusedYaw() + M_PI * Est.fusedHemi();
+            att_out.yaw = yaw;//Est.fusedYaw();//+ M_PI * Est.fusedHemi();
             att_out.pitch = Est.fusedPitch();//+ M_PI * Est.fusedHemi();
             att_out.roll = Est.fusedRoll();//+ M_PI * Est.fusedHemi();
-            //std::cout << "My attitude is (ZYX Euler): (" << Est.eulerYaw() << "," << Est.eulerPitch() << "," << Est.eulerRoll() << ")" << std::endl;
-	        //std::cout << "My attitude is (fused): (" << Est.fusedYaw() << "," << Est.fusedPitch() << "," << Est.fusedRoll() << "," << (Est.fusedHemi() ? 1 : -1) << ")" << "\n";
+            
+	    
             sendto(sock, reinterpret_cast<char*>(&att_out), sizeof(attitude_msg), 0, reinterpret_cast<struct sockaddr*>(&daddr), sizeof(struct sockaddr));
         }
         else if(lenread < 0)

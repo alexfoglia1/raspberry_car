@@ -114,7 +114,8 @@ void __attribute__((noreturn)) actuators_task()
     
     motorPowerOn();
     set_motors();
-
+    
+    bool wait_ad = true;
     while (1)
     {
         command_msg cmd_in;
@@ -132,6 +133,23 @@ void __attribute__((noreturn)) actuators_task()
             
             if (cmd_in.header.msg_id == COMMAND_MSG_ID)
             {
+                printf("rx command msg 0x%X!\n", (cmd_in.throttle_add & 0xFF));
+                printf("wait ad: %s\n", wait_ad ? "true" : "false");
+                if(wait_ad == true && ((cmd_in.throttle_add & 0xFF) == 0xAD))
+                {
+                    printf("Controller is alive, start actuating!\n");
+                    wait_ad = false;
+                }
+                if (wait_ad == false && ((cmd_in.throttle_add & 0xFF) == 0xDE))
+                {
+                    printf("Controller is quitting, wait for 0xAD to continue actuating.\n");
+                    wait_ad = true;
+                }
+                
+                if (wait_ad)
+                {
+                    continue;
+                }
                 bool is_straight = (last_direction_state == DIR_BWD || last_direction_state == DIR_FWD);
                 bool is_lateral  = (last_direction_state == DIR_LFT || last_direction_state == DIR_RGT);
                 is_brake = (throttle_state > BREAK_THRESHOLD_DIR_STRAIGHT && is_straight && cmd_in.throttle_add == 0x70) ||
@@ -152,7 +170,7 @@ void __attribute__((noreturn)) actuators_task()
                 set_motors();
             }
 
-            else if (cmd_in.header.msg_id == JS_XY_MSG_ID)
+            else if (cmd_in.header.msg_id == JS_XY_MSG_ID && !wait_ad)
             {
                 memcpy(&js_xy_in, &cmd_in, sizeof(joystick_xy_msg));
                 //printf("x axis(%d)\n", js_xy_in.x_axis);
@@ -161,7 +179,7 @@ void __attribute__((noreturn)) actuators_task()
                 distribute_speed(throttle_state);
 
             }
-            else if(cmd_in.header.msg_id == JS_BR_MSG_ID)
+            else if(cmd_in.header.msg_id == JS_BR_MSG_ID && !wait_ad)
             {
                 memcpy(&js_br_in, &cmd_in, sizeof(joystick_break_msg));
                 last_direction_state = DIR_BWD;
@@ -170,7 +188,7 @@ void __attribute__((noreturn)) actuators_task()
                 distribute_speed(js_br_in.backward);
                 throttle_state = js_br_in.backward;
             }
-            else if (cmd_in.header.msg_id == JS_TH_MSG_ID)
+            else if (cmd_in.header.msg_id == JS_TH_MSG_ID && !wait_ad)
             {
                 memcpy(&js_th_in, &cmd_in, sizeof(joystick_throttle_msg));
                 last_direction_state = DIR_FWD;
@@ -190,6 +208,7 @@ void __attribute__((noreturn)) actuators_task()
             {
                 std::cout << "Throttle state out: Failure" << std::endl;
             }
+            else printf("tx throttle state out to %s\n", PC_ADDRESS.c_str());
         }
 	else
 	{

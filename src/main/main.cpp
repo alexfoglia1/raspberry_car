@@ -16,6 +16,7 @@
 #include <fstream>
 
 std::string PC_ADDRESS("192.168.1.19");
+std::string TEGRA_ADDRESS("192.168.1.51");
 
 
 void on_sigterm(int pid)
@@ -30,9 +31,10 @@ int main(int argc, char** argv)
 {
     std::cout << "Raspberry car v01.00" << std::endl;
 
-    if (argc > 2)
+    if (argc >= 3)
     {
         PC_ADDRESS = argv[1];
+        TEGRA_ADDRESS = argv[2];
     }
     else
     {
@@ -52,7 +54,12 @@ int main(int argc, char** argv)
         {
                 PC_ADDRESS = line[0];
         }
+        if(line[1].length() > 0)
+        {
+                TEGRA_ADDRESS = line[1];
+        }
         std::cout << "PC ADDRESS(" << PC_ADDRESS << ")" << std::endl;
+        std::cout << "TEGRA ADDRESS(" << TEGRA_ADDRESS << ")" << std::endl;
     }
 
     signal(SIGTERM, on_sigterm);
@@ -75,7 +82,7 @@ int main(int argc, char** argv)
     pid = fork();
     if (pid == 0)
     {
-        detect_task();
+        //detect_task();
         exit(EXIT_SUCCESS);
     }
 

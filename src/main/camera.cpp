@@ -37,7 +37,7 @@ void __attribute__((noreturn)) camera_task()
     pcaddr.sin_port = htons(RENPORT);
     
     detaddr.sin_family = AF_INET;
-    detaddr.sin_addr.s_addr = inet_addr("127.0.0.1");
+    detaddr.sin_addr.s_addr = inet_addr(TEGRA_ADDRESS.c_str());
     detaddr.sin_port = htons(DETPORT);
 
 
@@ -60,48 +60,43 @@ void __attribute__((noreturn)) camera_task()
         cv::flip(frame, frame, -1);
         cv::resize(frame, frame, cv::Size(IMAGE_COLS, IMAGE_ROWS));
 
-        cv::Mat gray;
-        cv::cvtColor(frame, gray, cv::COLOR_BGR2GRAY);
-
         std::vector<int> params;
         std::vector<uint8_t> buffer;
-        std::vector<uint8_t> detbuffer;
+        
         params.push_back(cv::IMWRITE_JPEG_QUALITY);
-        params.push_back(60);
+        params.push_back(40);
         cv::imencode(".jpg", frame, buffer, params);
-       cv::imencode(".jpg", gray, detbuffer, params);
 
-        image_msg outmsg, detmsg;
+        image_msg outmsg;
         outmsg.len = static_cast<uint16_t>(buffer.size());
-        detmsg.len = static_cast<uint16_t>(detbuffer.size());
 
         for(uint16_t i = 0; i < outmsg.len; i++)
         {
             outmsg.data[i] = buffer[i];
         }
-
-        for(uint16_t i = 0; i < detmsg.len; i++)
+        static int tx_to_detector = 0;
+        tx_to_detector +=1;
+        if (tx_to_detector == 10)
         {
-            detmsg.data[i] = detbuffer[i];
-        }
-
-        if (sendto(sock_to_detector, reinterpret_cast<char*>(&detmsg), detmsg.len, 0, reinterpret_cast<struct sockaddr*>(&detaddr), sizeof(detaddr)) > 0)
+        if (sendto(sock_to_detector, reinterpret_cast<char*>(&outmsg), outmsg.len, 0, reinterpret_cast<struct sockaddr*>(&detaddr), sizeof(detaddr)) > 0)
         {
             //printf("OK sendto DETECTOR\n");
         }
-        //else
-        //{
-        //    perror("Camera task to DETECTOR\n");
-        //}
+        else
+        {
+            perror("Camera task to DETECTOR\n");
+        }
+        tx_to_detector = 0;
+        }
 
         if (sendto(sock, reinterpret_cast<char*>(&outmsg), sizeof(outmsg), 0, reinterpret_cast<struct sockaddr*>(&pcaddr), sizeof(pcaddr)) > 0)
         {
              //printf("Ok sendto PC\n");
         }
-        else
-        {
-             perror("Camera task to PC");
-        }
+        //else
+        //{
+        //     perror("Camera task to PC");
+        //}
         
 
     }
