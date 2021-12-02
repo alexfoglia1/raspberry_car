@@ -6,8 +6,8 @@
 #include <stdio.h>
 #include <limits>
 
-#define LEFT(speed)  ((uint8_t)(((float)(speed) * 1.0f)))
-#define RIGHT(speed) ((uint8_t)(((float)(speed) * 0.85f)))
+#define LEFT(speed)  (speed)
+#define RIGHT(speed) (speed)
 
 static uint8_t Speed_Magnitude = MIN_SPEED;
 static bool invert_left_right = false;

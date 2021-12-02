@@ -124,26 +124,28 @@ void __attribute__((noreturn)) actuators_task()
         joystick_break_msg js_br_in;
         throttle_msg cmd_resp;
         socklen_t socklen;
-        size_t maxrecvlen = sizeof(command_msg);
+        size_t maxrecvlen = 65536;
 	
         int recvok = recv(serversock, &cmd_in, maxrecvlen, 0);//, reinterpret_cast<struct sockaddr*>(&saddr), &socklen);
         
         if (recvok)
         {
-            
+            //printf("cmd_in.header.msg_id: %d\n", cmd_in.header.msg_id);
             if (cmd_in.header.msg_id == COMMAND_MSG_ID)
             {
-                printf("rx command msg 0x%X!\n", (cmd_in.throttle_add & 0xFF));
-                printf("wait ad: %s\n", wait_ad ? "true" : "false");
+                //printf("rx command msg 0x%X!\n", (cmd_in.throttle_add & 0xFF));
+                //printf("wait ad: %s\n", wait_ad ? "true" : "false");
                 if(wait_ad == true && ((cmd_in.throttle_add & 0xFF) == 0xAD))
                 {
-                    printf("Controller is alive, start actuating!\n");
+                    //printf("Controller is alive, start actuating!\n");
                     wait_ad = false;
                 }
                 if (wait_ad == false && ((cmd_in.throttle_add & 0xFF) == 0xDE))
                 {
-                    printf("Controller is quitting, wait for 0xAD to continue actuating.\n");
+                    //printf("Controller is quitting, wait for 0xAD to continue actuating.\n");
                     wait_ad = true;
+                    throttle_state = 0;
+		    set_motors();
                 }
                 
                 if (wait_ad)
@@ -155,13 +157,14 @@ void __attribute__((noreturn)) actuators_task()
                 is_brake = (throttle_state > BREAK_THRESHOLD_DIR_STRAIGHT && is_straight && cmd_in.throttle_add == 0x70) ||
                            (throttle_state > BREAK_THRESHOLD_DIR_LATERAL && is_lateral  && cmd_in.throttle_add == 0x70) ;
 
+                //printf("Throttle add received is: 0x%X\n", cmd_in.throttle_add);
                 int32_t n_throttle_state_s32 = static_cast<int32_t>(throttle_state) + static_cast<int32_t>(cmd_in.throttle_add);
                 throttle_state = cmd_in.throttle_add == THROTTLE_MIN ? 0x00 :
                                  cmd_in.throttle_add == THROTTLE_MAX ? 0xFF :
                                  n_throttle_state_s32 > 0xFF ? 0xFF :
                                  n_throttle_state_s32 < 0x00 ? 0x00 :
                                  static_cast<uint8_t>(n_throttle_state_s32 & 0xFF);
-
+		//printf("Hence new throttle state will be: %d\n", throttle_state);
                 direction_state = cmd_in.direction;
                 if (direction_state != DIR_NONE)
                 {
@@ -208,7 +211,7 @@ void __attribute__((noreturn)) actuators_task()
             {
                 std::cout << "Throttle state out: Failure" << std::endl;
             }
-            else printf("tx throttle state out to %s\n", PC_ADDRESS.c_str());
+            //else printf("tx throttle state out to %s\n", PC_ADDRESS.c_str());
         }
 	else
 	{
