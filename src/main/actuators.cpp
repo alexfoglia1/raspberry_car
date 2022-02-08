@@ -90,7 +90,7 @@ void* listener(void*)
     saddr.sin_port = htons(JOYPORT);
 
     int res = bind(serversock, reinterpret_cast<struct sockaddr*>(&saddr), sizeof(struct sockaddr_in));
-    if (!res)
+    if (res < 0)
     {
         perror("Bind actuator socket");
         exit(EXIT_FAILURE);
