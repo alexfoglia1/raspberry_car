@@ -137,9 +137,9 @@ void __attribute__((noreturn)) imu_task()
     const int imu_msg_dim = 84;
     char imu_out[imu_msg_dim];
     
-    stateestimation::AttitudeEstimator Est;
-    Est.setMagCalib(0.68, -1.32, 0.0);
-    Est.setPIGains(2.2, 2.65, 10, 1.25);
+    stateestimation::AttitudeEstimator* Est = new stateestimation::AttitudeEstimator();
+    Est->setMagCalib(0.68, -1.32, 0.0);
+    Est->setPIGains(2.2, 2.65, 10, 1.25);
 
     double yaw = 0.0;
     double t0 = -1;
@@ -150,7 +150,17 @@ void __attribute__((noreturn)) imu_task()
         ssize_t lenread;
         if (lenread = recv(melopero_interface, &imu_out, imu_msg_dim, 0) > 0)
         {
+            double msg_timestamp = *reinterpret_cast<double*>(&imu_out[4]);
+            if (msg_timestamp == 0)
+            {
+                printf("IMU alive, resetting estimator...\n");
+                yaw = 0;
+		if (Est) delete Est;
+    		Est = new stateestimation::AttitudeEstimator();
+    		Est->setMagCalib(0.68, -1.32, 0.0);
+    		Est->setPIGains(2.2, 2.65, 10, 1.25);
 
+            }
             double accx  = *reinterpret_cast<double*>(&imu_out[12]);
             double accy  = *reinterpret_cast<double*>(&imu_out[20]);
             double accz  = *reinterpret_cast<double*>(&imu_out[28]);
@@ -165,17 +175,17 @@ void __attribute__((noreturn)) imu_task()
             dt_s = t0 < 0 ? 1.0/80.0 : act_t - t0;
             
             //printf("before update: dt_s(%f) accx(%f) accy(%f) accz(%f) gyrox(%f) gyroy(%f) gyroz(%f)\n", dt_s, accx, accy, accz, gyrox, gyroy, gyroz);
-            Est.update(dt_s, gyrox, gyroy, gyroz, accx, accy, accz, magnx, magny, magnz);
+            Est->update(dt_s, gyrox, gyroy, gyroz, accx, accy, accz, magnx, magny, magnz);
             yaw += gyroz * dt_s;
             t0 = act_t;
             
             double q[4];
-	        Est.getAttitude(q);
+	        Est->getAttitude(q);
 	        
 	        att_out.header.msg_id = ATTITUDE_MSG_ID;
             att_out.yaw = yaw;//Est.fusedYaw();//+ M_PI * Est.fusedHemi();
-            att_out.pitch = Est.fusedPitch();//+ M_PI * Est.fusedHemi();
-            att_out.roll = Est.fusedRoll();//+ M_PI * Est.fusedHemi();
+            att_out.pitch = Est->fusedPitch();//+ M_PI * Est.fusedHemi();
+            att_out.roll = Est->fusedRoll();//+ M_PI * Est.fusedHemi();
             
 	    
             sendto(sock, reinterpret_cast<char*>(&att_out), sizeof(attitude_msg), 0, reinterpret_cast<struct sockaddr*>(&daddr), sizeof(struct sockaddr));
