@@ -70,22 +70,6 @@ typedef struct __attribute__((packed))
 
 typedef struct __attribute__((packed))
 {
-    uint32_t x_pos;
-    uint32_t y_pos;
-    uint32_t width;
-    uint32_t height;
-    char description[100];
-} target_data;
-
-typedef struct __attribute__((packed))
-{
-    msg_header header;
-    uint8_t n_targets;
-    target_data data[MAX_TARGETS];
-} target_msg;
-
-typedef struct __attribute__((packed))
-{
     msg_header header;
     double pitch;
     double roll;
