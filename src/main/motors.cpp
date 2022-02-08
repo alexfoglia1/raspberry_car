@@ -6,13 +6,9 @@
 #include <stdio.h>
 #include <limits>
 
-#define LEFT(speed)  (speed)
-#define RIGHT(speed) (speed)
-
-static uint8_t Speed_Magnitude = MIN_SPEED;
 static bool invert_left_right = false;
 
-void motorPowerOn()
+void init_motors()
 {
     wiringPiSetup();
 
@@ -27,7 +23,7 @@ void motorPowerOn()
     softPwmCreate(ENABLE_RIGHT, MIN_SPEED, MAX_SPEED);
 }
 
-void motorPowerOff()
+void stop_motors()
 {
     digitalWrite(MOTOR_LEFT1,  LOW);
     digitalWrite(MOTOR_LEFT2,  LOW);
@@ -38,64 +34,28 @@ void motorPowerOff()
     softPwmWrite(ENABLE_RIGHT, 0x00);
 }
 
-void setMotorForward()
+void motors_forward()
 {
     digitalWrite(MOTOR_LEFT1, HIGH);
     digitalWrite(MOTOR_LEFT2, LOW);
     digitalWrite(MOTOR_RIGHT1, HIGH);
     digitalWrite(MOTOR_RIGHT2, LOW);
+
     invert_left_right = false;
 }
 
-void setMotorBackward()
+void motors_backward()
 {
     digitalWrite(MOTOR_LEFT1, LOW);
     digitalWrite(MOTOR_LEFT2, HIGH);
     digitalWrite(MOTOR_RIGHT1, LOW);
     digitalWrite(MOTOR_RIGHT2, HIGH);
+
     invert_left_right = true;
 }
 
-void setMotorLeft()
+void set_motor_speed(uint8_t speed_left, uint8_t speed_right)
 {
-    digitalWrite(MOTOR_LEFT1, LOW);
-    digitalWrite(MOTOR_LEFT2, HIGH);
-    digitalWrite(MOTOR_RIGHT1, HIGH);
-    digitalWrite(MOTOR_RIGHT2, LOW);
-}
-
-void setMotorRight()
-{
-    digitalWrite(MOTOR_LEFT1, HIGH);
-    digitalWrite(MOTOR_LEFT2, LOW);
-    digitalWrite(MOTOR_RIGHT1, LOW);
-    digitalWrite(MOTOR_RIGHT2, HIGH);
-}
-
-void applyMotorSpeed(uint8_t speed)
-{
-    //printf("SoftPWMWrite %d\n", speed);
-    softPwmWrite(ENABLE_LEFT, invert_left_right ? RIGHT(speed) : LEFT(speed));
-    softPwmWrite(ENABLE_RIGHT, invert_left_right ? LEFT(speed) : RIGHT(speed));
-    //usleep(1000);
-    //double duty_left =  (double)(speed)/255.0;
-    //double duty_right = (double)(speed)/255.0;
-    //double v_out_left = duty_left * 5;
-    //double v_out_right = duty_right * 5;
-    //printf("v_out_left %f V\n", v_out_left);
-    //printf("v_out_right %f V\n\n", v_out_right);
-}
-
-void applyMotorLRSpeed(uint8_t speed_left, uint8_t speed_right)
-{
-    softPwmWrite(ENABLE_LEFT, invert_left_right ? RIGHT(speed_left)  : LEFT(speed_left));
-    softPwmWrite(ENABLE_RIGHT, invert_left_right ? LEFT(speed_right) : RIGHT(speed_right));
-
-    //double duty_left =  (double)(speed_left)/255.0;
-    //double duty_right = (double)(speed_left)/255.0;
-    //double v_out_left = duty_left * 5;
-    //double v_out_right = duty_right * 5;
-    //printf("v_out_left %f V\n", v_out_left);
-    //printf("v_out_right %f V\n\n", v_out_right);
-
+    softPwmWrite(ENABLE_LEFT, invert_left_right ? speed_left  : speed_left);
+    softPwmWrite(ENABLE_RIGHT, invert_left_right ? speed_right : speed_right);
 }

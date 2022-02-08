@@ -14,14 +14,12 @@ ${CMAKE_SOURCE_DIR}/src/include/sensors.h
 ${CMAKE_SOURCE_DIR}/src/include/camera.h
 ${CMAKE_SOURCE_DIR}/src/include/actuators.h
 ${CMAKE_SOURCE_DIR}/src/include/motors.h
-${CMAKE_SOURCE_DIR}/src/include/detector.h
 ${CMAKE_SOURCE_DIR}/src/include/attitude_estimator.h
 
 ${CMAKE_SOURCE_DIR}/src/main/sensors.cpp
 ${CMAKE_SOURCE_DIR}/src/main/camera.cpp
 ${CMAKE_SOURCE_DIR}/src/main/actuators.cpp
 ${CMAKE_SOURCE_DIR}/src/main/motors.cpp
-${CMAKE_SOURCE_DIR}/src/main/detector.cpp
 ${CMAKE_SOURCE_DIR}/src/main/attitude_estimator.cpp
 
 ${CMAKE_SOURCE_DIR}/src/main/main.cpp
@@ -30,8 +28,8 @@ ${CMAKE_SOURCE_DIR}/src/main/main.cpp
 find_package(OpenCV REQUIRED)
 include_directories(${OpenCV_INCLUDE_DIRS})
 
-find_library(WIRINGPI_LIBRARIES NAMES wiringPi)
-target_link_libraries(raspberry_car ${WIRINGPI_LIBRARIES})
+#find_library(WIRINGPI_LIBRARIES NAMES wiringPi)
+#target_link_libraries(raspberry_car ${WIRINGPI_LIBRARIES})
 
 target_link_libraries(raspberry_car ${CMAKE_THREAD_LIBS_INIT})
 target_link_libraries(raspberry_car ${OpenCV_LIBS})

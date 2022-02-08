@@ -10,213 +10,162 @@
 #include <unistd.h>
 #include <limits>
 #include <math.h>
+#include <vector>
+#include <queue>
 
-#define _min_(a,b)(a<b?a:b)
 
-static uint8_t throttle_state = 0x00;
-static dir_t direction_state = DIR_FWD;
-static dir_t last_direction_state = DIR_FWD;
-static int8_t x_axis = 0;
-static bool is_brake = false;
-
-void distribute_speed(uint8_t speed_magnitude)
+static std::vector<sys_state_machine_entry_t> state_machine =
 {
-    double left_percentage = 1.0 - (double) (-std::numeric_limits<int8_t>::min() + x_axis) /
-                                   (double) (std::numeric_limits<int8_t>::max() - std::numeric_limits<int8_t>::min());
+    /* Actual state */      /* Event */                     /* New state */         /* Action */
+    {sys_state_t::idle,     sys_event_t::received_start,    sys_state_t::running,   &idle_to_running},
+    {sys_state_t::idle,     sys_event_t::received_stop,     sys_state_t::idle,      nullptr},
+    {sys_state_t::idle,     sys_event_t::received_joystick, sys_state_t::idle,      nullptr},
 
+    {sys_state_t::running,  sys_event_t::received_start,    sys_state_t::running,   nullptr},
+    {sys_state_t::running,  sys_event_t::received_stop,     sys_state_t::idle,      &running_to_idle},
+    {sys_state_t::running,  sys_event_t::received_joystick, sys_state_t::running,   &joystick_handler}
+};
+
+static sys_state_t  system_state = sys_state_t::idle;
+static joystick_msg js_state;
+static std::queue<sys_event_t> event_queue;
+
+void post_event(sys_event_t event)
+{
+    event_queue.push(event);
+}
+
+sys_event_t pop_event()
+{
+    sys_event_t event = event_queue.front();
+    event_queue.pop();
+    return event;
+}
+
+void idle_to_running()
+{
+    init_motors();
+    set_motor_speed(0, 0);
+}
+
+void running_to_idle()
+{
+    set_motor_speed(0, 0);
+    stop_motors();
+}
+
+void joystick_handler()
+{
+    double left_percentage = 1.0 - (double) (-std::numeric_limits<int8_t>::min() + js_state.x_axis) /
+                                   (double) (std::numeric_limits<int8_t>::max() - std::numeric_limits<int8_t>::min());
     double right_percentage = 1.0 - left_percentage;
 
-
-    double right_speed = _min_(MAX_SPEED, speed_magnitude * 2 * left_percentage);
-    double left_speed =  _min_(MAX_SPEED, speed_magnitude * 2 * right_percentage);
-
+    double right_speed = std::min<double>(MAX_SPEED, js_state.throttle_state * 2 * left_percentage);
+    double left_speed =  std::min<double>(MAX_SPEED, js_state.throttle_state * 2 * right_percentage);
     uint8_t ils = static_cast<uint8_t>(left_speed);
     uint8_t irs = static_cast<uint8_t>(right_speed);
 
-    //printf("speed magnitude(%d), left motor(%d), right motor(%d)\n", speed_magnitude, ils, irs);
-    applyMotorLRSpeed(ils, irs);
+    if (js_state.header.msg_id == JS_ACC_MSG_ID)
+    {
+        motors_forward();
+    }
+    else
+    {
+        motors_backward();
+    }
+
+    set_motor_speed(ils, irs);
 }
 
-void set_motors()
+void* listener(void*)
 {
-    if (is_brake)
-    {
-         is_brake = false;
-         if (last_direction_state == DIR_FWD)
-         {
-             setMotorBackward();
-             applyMotorSpeed(0xFF);
-             usleep(100000);
-             setMotorForward();
-         }
-         else if (last_direction_state == DIR_BWD)
-         {
-            setMotorForward();
-            applyMotorSpeed(0xFF);
-            usleep(100000);
-            setMotorBackward();
-         }
-         else if (last_direction_state == DIR_LFT)
-         {
-            setMotorRight();
-            applyMotorSpeed(0xFF);
-            usleep(100000);
-            setMotorLeft();
-         }
-         else if (last_direction_state == DIR_RGT)
-         {
-            setMotorLeft();
-            applyMotorSpeed(0xFF);
-            usleep(100000);
-            setMotorRight();
-         }
-    }
-
-    if (direction_state == DIR_FWD)
-    {
-        setMotorForward();
-    }
-    else if (direction_state == DIR_BWD)
-    {
-        setMotorBackward();
-    }
-    else if (direction_state == DIR_LFT)
-    {
-        setMotorLeft();
-    }
-    else if (direction_state == DIR_RGT)
-    {
-        setMotorRight();
-    }
-    
-    applyMotorSpeed(throttle_state);
-}
-
-void __attribute__((noreturn)) actuators_task()
-{
+    size_t maxrecvlen = 65536;
     int serversock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-    int clisock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 
     struct sockaddr_in saddr;
-    struct sockaddr_in daddr;
 
     memset(&saddr, 0x00, sizeof(struct sockaddr_in));
     saddr.sin_family = AF_INET;
     saddr.sin_addr.s_addr = INADDR_ANY;
-    saddr.sin_port = htons(THRPORT);
+    saddr.sin_port = htons(JOYPORT);
+
+    int res = bind(serversock, reinterpret_cast<struct sockaddr*>(&saddr), sizeof(struct sockaddr_in));
+    if (!res)
+    {
+        perror("Bind actuator socket");
+        exit(EXIT_FAILURE);
+    }
+
+    while (true)
+    {
+        joystick_msg js_in;
+        recv(serversock, &js_in, maxrecvlen, 0);
+
+        if (js_in.header.msg_id == JS_ACC_MSG_ID || js_in.header.msg_id == JS_BRK_MSG_ID)
+        {
+            sys_event_t decoded_event = js_in.start_flag && !js_in.stop_flag  ? sys_event_t::received_start :
+                                        js_in.stop_flag  && !js_in.start_flag ? sys_event_t::received_stop  :
+                                        sys_event_t::received_joystick;
+
+            if (sys_event_t::received_joystick == decoded_event)
+            {
+                js_state = js_in;
+            }
+            else
+            {
+                js_state.start_flag = false;
+                js_state.stop_flag = false;
+                js_state.throttle_state = 0x00;
+                js_state.x_axis = 0x00;
+                js_state.y_axis = 0x00;
+            }
+
+            post_event(decoded_event);
+        }
+    }
+}
+
+void __attribute__((noreturn)) actuators_task(int millis)
+{
+    int clisock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    struct sockaddr_in daddr;
     
     memset(&daddr, 0x00, sizeof(struct sockaddr_in));
     daddr.sin_family = AF_INET;
     daddr.sin_addr.s_addr = inet_addr(PC_ADDRESS.c_str());
-    daddr.sin_port = htons(THRPORT);
+    daddr.sin_port = htons(JOYPORT);
+    
+    set_motor_speed(0, 0);
+    memset(&js_state, 0x00, sizeof(joystick_msg));
+    pthread_t thread;
+    pthread_create(&thread, NULL, listener, NULL);
 
-    int res = bind(serversock, reinterpret_cast<struct sockaddr*>(&saddr), sizeof(struct sockaddr_in));
-    
-    motorPowerOn();
-    set_motors();
-    
-    bool wait_ad = true;
     while (1)
     {
-        command_msg cmd_in;
-        joystick_xy_msg js_xy_in;
-        joystick_throttle_msg js_th_in;
-        joystick_break_msg js_br_in;
-        throttle_msg cmd_resp;
-        socklen_t socklen;
-        size_t maxrecvlen = 65536;
-	
-        int recvok = recv(serversock, &cmd_in, maxrecvlen, 0);//, reinterpret_cast<struct sockaddr*>(&saddr), &socklen);
-        
-        if (recvok)
+        usleep(millis * 1000);
+        if (!event_queue.empty())
         {
-            //printf("cmd_in.header.msg_id: %d\n", cmd_in.header.msg_id);
-            if (cmd_in.header.msg_id == COMMAND_MSG_ID)
+            sys_event_t next_event = pop_event();
+            for(auto& entry : state_machine)
             {
-                //printf("rx command msg 0x%X!\n", (cmd_in.throttle_add & 0xFF));
-                //printf("wait ad: %s\n", wait_ad ? "true" : "false");
-                if(wait_ad == true && ((cmd_in.throttle_add & 0xFF) == 0xAD))
+                if (entry.actual_state == system_state && entry.event == next_event)
                 {
-                    //printf("Controller is alive, start actuating!\n");
-                    wait_ad = false;
-                }
-                if (wait_ad == false && ((cmd_in.throttle_add & 0xFF) == 0xDE))
-                {
-                    //printf("Controller is quitting, wait for 0xAD to continue actuating.\n");
-                    wait_ad = true;
-                    throttle_state = 0;
-		    set_motors();
-                }
-                
-                if (wait_ad)
-                {
-                    continue;
-                }
-                bool is_straight = (last_direction_state == DIR_BWD || last_direction_state == DIR_FWD);
-                bool is_lateral  = (last_direction_state == DIR_LFT || last_direction_state == DIR_RGT);
-                is_brake = (throttle_state > BREAK_THRESHOLD_DIR_STRAIGHT && is_straight && cmd_in.throttle_add == 0x70) ||
-                           (throttle_state > BREAK_THRESHOLD_DIR_LATERAL && is_lateral  && cmd_in.throttle_add == 0x70) ;
+                    if (entry.action != nullptr)
+                    {
+                        entry.action();
+                    }
+                    system_state = entry.next_state;
 
-                //printf("Throttle add received is: 0x%X\n", cmd_in.throttle_add);
-                int32_t n_throttle_state_s32 = static_cast<int32_t>(throttle_state) + static_cast<int32_t>(cmd_in.throttle_add);
-                throttle_state = cmd_in.throttle_add == THROTTLE_MIN ? 0x00 :
-                                 cmd_in.throttle_add == THROTTLE_MAX ? 0xFF :
-                                 n_throttle_state_s32 > 0xFF ? 0xFF :
-                                 n_throttle_state_s32 < 0x00 ? 0x00 :
-                                 static_cast<uint8_t>(n_throttle_state_s32 & 0xFF);
-		//printf("Hence new throttle state will be: %d\n", throttle_state);
-                direction_state = cmd_in.direction;
-                if (direction_state != DIR_NONE)
-                {
-                    last_direction_state = direction_state;
+                    break;
                 }
-                set_motors();
             }
-
-            else if (cmd_in.header.msg_id == JS_XY_MSG_ID && !wait_ad)
-            {
-                memcpy(&js_xy_in, &cmd_in, sizeof(joystick_xy_msg));
-                //printf("x axis(%d)\n", js_xy_in.x_axis);
-                x_axis = js_xy_in.x_axis;
-                last_direction_state = DIR_FWD;
-                distribute_speed(throttle_state);
-
-            }
-            else if(cmd_in.header.msg_id == JS_BR_MSG_ID && !wait_ad)
-            {
-                memcpy(&js_br_in, &cmd_in, sizeof(joystick_break_msg));
-                last_direction_state = DIR_BWD;
-                setMotorBackward();
-		//printf("received backward(%d)\n", js_br_in.backward);
-                distribute_speed(js_br_in.backward);
-                throttle_state = js_br_in.backward;
-            }
-            else if (cmd_in.header.msg_id == JS_TH_MSG_ID && !wait_ad)
-            {
-                memcpy(&js_th_in, &cmd_in, sizeof(joystick_throttle_msg));
-                last_direction_state = DIR_FWD;
-                setMotorForward();
-                distribute_speed(js_th_in.throttle_state);
-           	throttle_state = js_th_in.throttle_state; 
-	   }
-
-            cmd_resp.header.msg_id = COMMAND_MSG_ID;
-            cmd_resp.throttle_state = throttle_state;
-            if (sendto (
-                clisock, &cmd_resp, sizeof(cmd_resp),
-                0,
-                reinterpret_cast<struct sockaddr*>(&daddr),
-                sizeof(daddr)
-                ) <= 0)
-            {
-                std::cout << "Throttle state out: Failure" << std::endl;
-            }
-            //else printf("tx throttle state out to %s\n", PC_ADDRESS.c_str());
         }
-	else
-	{
-		perror("RECV");
-	}
+
+        actuators_state_msg state_out;
+        state_out.header.msg_id = ACTUATORS_STATE_MSG_ID;
+        state_out.throttle_state = js_state.throttle_state;
+        state_out.system_state = int8_t(system_state);
+        sendto(clisock, &state_out, sizeof(actuators_state_msg), 0, (struct sockaddr*)&daddr, sizeof(struct sockaddr_in));
     }
 
 }

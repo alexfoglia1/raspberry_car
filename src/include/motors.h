@@ -12,15 +12,11 @@
 #define MAX_SPEED       0xFF
 #define MIN_SPEED       0x00
 
-void motorPowerOn();
-void motorPowerOff();
-void setMotorForward();
-void setMotorBackward();
-void setMotorLeft();
-void setMotorRight();
-
-void applyMotorSpeed(uint8_t speed);
-void applyMotorLRSpeed(uint8_t speed_left, uint8_t speed_right);
+void init_motors();
+void stop_motors();
+void motors_forward();
+void motors_backward();
+void set_motor_speed(uint8_t speed_left, uint8_t speed_right);
 
 
 #endif //MOTORS_H
