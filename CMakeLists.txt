@@ -28,11 +28,12 @@ ${CMAKE_SOURCE_DIR}/src/main/main.cpp
 find_package(OpenCV REQUIRED)
 include_directories(${OpenCV_INCLUDE_DIRS})
 
-#find_library(WIRINGPI_LIBRARIES NAMES wiringPi)
-#target_link_libraries(raspberry_car ${WIRINGPI_LIBRARIES})
+find_library(WIRINGPI_LIBRARIES NAMES wiringPi)
+target_link_libraries(raspberry_car ${WIRINGPI_LIBRARIES})
 
 target_link_libraries(raspberry_car ${CMAKE_THREAD_LIBS_INIT})
 target_link_libraries(raspberry_car ${OpenCV_LIBS})
+target_link_libraries(raspberry_car pthread)
 target_include_directories(raspberry_car PRIVATE ${CMAKE_SOURCE_DIR}/src/include)
 
 
