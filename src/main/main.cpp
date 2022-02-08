@@ -2,7 +2,6 @@
 #include "sensors.h"
 #include "actuators.h"
 #include "motors.h"
-#include "detector.h"
 #include "defs.h"
 
 
@@ -22,7 +21,7 @@ std::string TEGRA_ADDRESS("192.168.1.51");
 void on_sigterm(int pid)
 {
     std::cout << "Emergency exit" << std::endl;
-    motorPowerOff();
+    stop_motors();
     kill(0, SIGKILL);
 }
 
@@ -103,7 +102,7 @@ int main(int argc, char** argv)
     pid = fork();
     if(pid == 0)
     {
-        actuators_task();
+        actuators_task(10);
         exit(EXIT_SUCCESS);
     }
 

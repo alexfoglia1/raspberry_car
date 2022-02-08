@@ -20,7 +20,8 @@
 #include <pcf8591.h>
 #include <sys/time.h>
 #include <math.h>
-
+#include <time.h>
+#include <sys/time.h>
 
 #define RAD_2_DEG(rad) (rad*180.0/M_PI)
 #define DEG_2_RAD(deg) (deg*M_PI/180.0)
@@ -101,9 +102,6 @@ void __attribute__((noreturn)) voltage_task()
          sendto(sock, reinterpret_cast<char*>(&voltage_out), sizeof(voltage_msg), 0, reinterpret_cast<struct sockaddr*>(&daddr), sizeof(struct sockaddr));
     }
 }
-
-#include <time.h>
-#include <sys/time.h>
 
 double timestamp()
 {
