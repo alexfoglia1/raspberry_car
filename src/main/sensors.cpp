@@ -3,26 +3,16 @@
 #include "attitude_estimator.h"
 
 #include <stdio.h>
-#include <errno.h>
+#include <unistd.h>
 #include <termios.h>
 #include <string.h>
-#include <stdlib.h>
-#include <unistd.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
-#include <netinet/in.h>
 #include <sys/types.h>
-#include <sys/stat.h>
-#include <time.h>
 #include <fcntl.h>
-#include <stdbool.h>
-#include <iostream>
-#include <pcf8591.h>
-#include <sys/time.h>
-#include <math.h>
-#include <time.h>
 #include <sys/time.h>
 
+#define M_PI 3.141592653589793
 #define RAD_2_DEG(rad) (rad*180.0/M_PI)
 #define DEG_2_RAD(deg) (deg*M_PI/180.0)
 #define MAX_READABLE_VOLTAGE_V 10.f //todo: se questa cosa cambia rivedi il partitore di tensione perchè attualmente divide per 2 :(
@@ -145,20 +135,22 @@ void __attribute__((noreturn)) imu_task()
     while(1)
     {
         memset(&imu_out, 0x00, imu_msg_dim);
-        ssize_t lenread;
-        if (lenread = recv(melopero_interface, &imu_out, imu_msg_dim, 0) > 0)
+        ssize_t lenread = recv(melopero_interface, &imu_out, imu_msg_dim, 0);
+        if (lenread  > 0)
         {
             double msg_timestamp = *reinterpret_cast<double*>(&imu_out[4]);
             if (msg_timestamp == 0)
             {
                 printf("IMU alive, resetting estimator...\n");
                 yaw = 0;
-		if (Est) delete Est;
-    		Est = new stateestimation::AttitudeEstimator();
-    		Est->setMagCalib(0.68, -1.32, 0.0);
-    		Est->setPIGains(2.2, 2.65, 10, 1.25);
 
+                if (Est) delete Est;
+
+                Est = new stateestimation::AttitudeEstimator();
+                Est->setMagCalib(0.68, -1.32, 0.0);
+                Est->setPIGains(2.2, 2.65, 10, 1.25);
             }
+
             double accx  = *reinterpret_cast<double*>(&imu_out[12]);
             double accy  = *reinterpret_cast<double*>(&imu_out[20]);
             double accz  = *reinterpret_cast<double*>(&imu_out[28]);
@@ -171,8 +163,7 @@ void __attribute__((noreturn)) imu_task()
             
             double act_t = timestamp();
             dt_s = t0 < 0 ? 1.0/80.0 : act_t - t0;
-            
-            //printf("before update: dt_s(%f) accx(%f) accy(%f) accz(%f) gyrox(%f) gyroy(%f) gyroz(%f)\n", dt_s, accx, accy, accz, gyrox, gyroy, gyroz);
+
             Est->update(dt_s, gyrox, gyroy, gyroz, accx, accy, accz, magnx, magny, magnz);
             yaw += gyroz * dt_s;
             t0 = act_t;
@@ -181,11 +172,10 @@ void __attribute__((noreturn)) imu_task()
 	        Est->getAttitude(q);
 	        
 	        att_out.header.msg_id = ATTITUDE_MSG_ID;
-            att_out.yaw = yaw;//Est.fusedYaw();//+ M_PI * Est.fusedHemi();
-            att_out.pitch = Est->fusedPitch();//+ M_PI * Est.fusedHemi();
-            att_out.roll = Est->fusedRoll();//+ M_PI * Est.fusedHemi();
+            att_out.yaw = yaw;
+            att_out.pitch = Est->fusedPitch();
+            att_out.roll = Est->fusedRoll();
             
-	    
             sendto(sock, reinterpret_cast<char*>(&att_out), sizeof(attitude_msg), 0, reinterpret_cast<struct sockaddr*>(&daddr), sizeof(struct sockaddr));
         }
         else if(lenread < 0)

@@ -4,7 +4,6 @@
 #include "motors.h"
 #include "defs.h"
 
-
 #include <iostream>
 #include <unistd.h>
 #include <signal.h>
@@ -20,6 +19,8 @@ std::string TEGRA_ADDRESS("192.168.1.51");
 
 void on_sigterm(int pid)
 {
+    __UNUSED__(&pid);
+
     std::cout << "Emergency exit" << std::endl;
     stop_motors();
     kill(0, SIGKILL);
@@ -28,7 +29,7 @@ void on_sigterm(int pid)
 
 int main(int argc, char** argv)
 {
-    std::cout << "Raspberry car v01.00" << std::endl;
+    std::cout << PROJNAME << std::endl;
 
     if (argc >= 3)
     {
@@ -49,14 +50,16 @@ int main(int argc, char** argv)
             }
             rfile.close();
         }
+
         if(line[0].length() > 0)
         {
-                PC_ADDRESS = line[0];
+            PC_ADDRESS = line[0];
         }
         if(line[1].length() > 0)
         {
-                TEGRA_ADDRESS = line[1];
+            TEGRA_ADDRESS = line[1];
         }
+
         std::cout << "PC ADDRESS(" << PC_ADDRESS << ")" << std::endl;
         std::cout << "TEGRA ADDRESS(" << TEGRA_ADDRESS << ")" << std::endl;
     }
@@ -75,13 +78,6 @@ int main(int argc, char** argv)
     {
 	
         camera_task();
-        exit(EXIT_SUCCESS);
-    }
-    
-    pid = fork();
-    if (pid == 0)
-    {
-        //detect_task();
         exit(EXIT_SUCCESS);
     }
 

@@ -20,10 +20,16 @@
 
 #include "defs.h"
 
+static int tx_to_detector = 0;
+
 void __attribute__((noreturn)) camera_task()
 {
-	
     cv::VideoCapture capture(0);
+    if (!capture.isOpened())
+    {
+        exit(EXIT_FAILURE);
+    }
+
     int sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     int sock_to_detector = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 
@@ -39,21 +45,12 @@ void __attribute__((noreturn)) camera_task()
     detaddr.sin_family = AF_INET;
     detaddr.sin_addr.s_addr = inet_addr(TEGRA_ADDRESS.c_str());
     detaddr.sin_port = htons(DETPORT);
-
-
-    if (!capture.isOpened())
-    {
 	
-        exit(EXIT_FAILURE);
-    }
-	
-
     cv::Mat frame;
     while (1)
     {
         if (!capture.read(frame))
         {
-		
             exit(EXIT_FAILURE);
         }
 
@@ -70,34 +67,25 @@ void __attribute__((noreturn)) camera_task()
         image_msg outmsg;
         outmsg.len = static_cast<uint16_t>(buffer.size());
 
-        for(uint16_t i = 0; i < outmsg.len; i++)
+        for (uint16_t i = 0; i < outmsg.len; i++)
         {
             outmsg.data[i] = buffer[i];
         }
-        static int tx_to_detector = 0;
+
         tx_to_detector +=1;
         if (tx_to_detector == 10)
         {
-        if (sendto(sock_to_detector, reinterpret_cast<char*>(&outmsg), outmsg.len, 0, reinterpret_cast<struct sockaddr*>(&detaddr), sizeof(detaddr)) > 0)
-        {
-            //printf("OK sendto DETECTOR\n");
-        }
-        else
-        {
-            perror("Camera task to DETECTOR\n");
-        }
-        tx_to_detector = 0;
+            if (sendto(sock_to_detector, reinterpret_cast<char*>(&outmsg), outmsg.len, 0, reinterpret_cast<struct sockaddr*>(&detaddr), sizeof(detaddr)) <= 0)
+            {
+                perror("Camera task to DETECTOR\n");
+            }
+
+            tx_to_detector = 0;
         }
 
         if (sendto(sock, reinterpret_cast<char*>(&outmsg), sizeof(outmsg), 0, reinterpret_cast<struct sockaddr*>(&pcaddr), sizeof(pcaddr)) > 0)
         {
-             //printf("Ok sendto PC\n");
+            perror("Camera task to PC");
         }
-        //else
-        //{
-        //     perror("Camera task to PC");
-        //}
-        
-
     }
 }

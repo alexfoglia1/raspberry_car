@@ -1,8 +1,8 @@
-#include <unistd.h>
 #include "motors.h"
+
+#include <unistd.h>
 #include <wiringPi.h>
 #include <softPwm.h>
-#include <math.h>
 #include <stdio.h>
 #include <limits>
 

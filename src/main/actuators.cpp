@@ -13,7 +13,6 @@
 #include <vector>
 #include <queue>
 
-
 static std::vector<sys_state_machine_entry_t> state_machine =
 {
     /* Actual state */      /* Event */                     /* New state */         /* Action */
@@ -146,7 +145,8 @@ void __attribute__((noreturn)) actuators_task(int millis)
         if (!event_queue.empty())
         {
             sys_event_t next_event = pop_event();
-            for(auto& entry : state_machine)
+
+            for (auto& entry : state_machine)
             {
                 if (entry.actual_state == system_state && entry.event == next_event)
                 {

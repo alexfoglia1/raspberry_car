@@ -51,6 +51,8 @@
 #define THROTTLE_MIN 0x70
 #define MAX_TARGETS 10
 
+#define __UNUSED__(x) (*x)
+
 #include <stdint.h>
 #include <string>
 
