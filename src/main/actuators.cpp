@@ -1,4 +1,5 @@
 #include "actuators.h"
+#include "lights.h"
 #include "motors.h"
 #include "defs.h"
 
@@ -43,18 +44,24 @@ sys_event_t pop_event()
 
 void idle_to_running()
 {
+    printf("Idle to running\n");
     init_motors();
+    init_lights();
     set_motor_speed(0, 0);
 }
 
 void running_to_idle()
 {
+    printf("Running to idle\n");
     set_motor_speed(0, 0);
+    js_state.throttle_state = 0x00;
     stop_motors();
+    shutdown_lights();
 }
 
 void joystick_handler()
 {
+
     double left_percentage = 1.0 - (double) (-std::numeric_limits<int8_t>::min() + js_state.x_axis) /
                                    (double) (std::numeric_limits<int8_t>::max() - std::numeric_limits<int8_t>::min());
     double right_percentage = 1.0 - left_percentage;
@@ -74,6 +81,36 @@ void joystick_handler()
     }
 
     set_motor_speed(ils, irs);
+
+    if (js_state.left_light_on && !js_state.left_light_off)
+    {
+         left_light_on();
+    }
+     
+    if (js_state.left_light_off && !js_state.left_light_on)
+    {
+         left_light_off();
+    }
+
+    if (js_state.right_light_on && !js_state.right_light_off)
+    {
+         right_light_on();
+    }
+
+    if (js_state.right_light_off && !js_state.right_light_on)
+    {
+         right_light_off();
+    }
+
+    if (js_state.central_light_on && !js_state.central_light_off)
+    {
+        central_light_on();
+    }
+
+    if (js_state.central_light_off && !js_state.central_light_on)
+    {
+        central_light_off();
+    }
 }
 
 void* listener(void*)
@@ -86,7 +123,7 @@ void* listener(void*)
     memset(&saddr, 0x00, sizeof(struct sockaddr_in));
     saddr.sin_family = AF_INET;
     saddr.sin_addr.s_addr = INADDR_ANY;
-    saddr.sin_port = htons(JOYPORT);
+    saddr.sin_port = htons(REMOTE_PORT_DATA);
 
     int res = bind(serversock, reinterpret_cast<struct sockaddr*>(&saddr), sizeof(struct sockaddr_in));
     if (res < 0)
@@ -110,14 +147,10 @@ void* listener(void*)
             {
                 js_state = js_in;
             }
-            else
-            {
-                js_state.start_flag = false;
-                js_state.stop_flag = false;
-                js_state.throttle_state = 0x00;
-                js_state.x_axis = 0x00;
-                js_state.y_axis = 0x00;
-            }
+            else if (sys_event_t::received_start == decoded_event)
+		printf("Received start\n");
+	    else if (sys_event_t::received_stop == decoded_event)
+		printf("Received stop\n");
 
             post_event(decoded_event);
         }
@@ -128,21 +161,23 @@ void __attribute__((noreturn)) actuators_task(int millis)
 {
     int clisock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     struct sockaddr_in daddr;
-    
+    init_motors();
+    init_lights();
     memset(&daddr, 0x00, sizeof(struct sockaddr_in));
     daddr.sin_family = AF_INET;
     daddr.sin_addr.s_addr = inet_addr(PC_ADDRESS.c_str());
-    daddr.sin_port = htons(JOYPORT);
+    daddr.sin_port = htons(REMOTE_PORT_DATA);
     
     set_motor_speed(0, 0);
     memset(&js_state, 0x00, sizeof(joystick_msg));
     pthread_t thread;
     pthread_create(&thread, NULL, listener, NULL);
-
+    
     while (1)
     {
+
         usleep(millis * 1000);
-        if (!event_queue.empty())
+        while (!event_queue.empty())
         {
             sys_event_t next_event = pop_event();
 

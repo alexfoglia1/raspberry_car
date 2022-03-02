@@ -98,7 +98,7 @@ int main(int argc, char** argv)
     pid = fork();
     if(pid == 0)
     {
-        actuators_task(10);
+        actuators_task(1);
         exit(EXIT_SUCCESS);
     }
 

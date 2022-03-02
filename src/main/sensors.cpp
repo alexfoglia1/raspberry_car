@@ -80,7 +80,7 @@ void __attribute__((noreturn)) voltage_task()
     memset(&daddr, 0x00, sizeof(struct sockaddr_in));
     daddr.sin_family = AF_INET;
     daddr.sin_addr.s_addr = inet_addr(PC_ADDRESS.c_str());
-    daddr.sin_port = htons(VLTPORT);
+    daddr.sin_port = htons(REMOTE_PORT_DATA);
 
     voltage_msg voltage_out;
     memset(&voltage_out, 0x00, sizeof(voltage_msg));
@@ -108,7 +108,7 @@ void __attribute__((noreturn)) imu_task()
     memset(&saddr, 0x00, sizeof(struct sockaddr_in));
     saddr.sin_family = AF_INET;
     saddr.sin_addr.s_addr = INADDR_ANY;
-    saddr.sin_port = htons(ATTPORT);
+    saddr.sin_port = htons(LOCAL_PORT_IMU);
 
     bind(melopero_interface, reinterpret_cast<struct sockaddr*>(&saddr), sizeof(struct sockaddr));
 
@@ -117,7 +117,7 @@ void __attribute__((noreturn)) imu_task()
     memset(&daddr, 0x00, sizeof(struct sockaddr_in));
     daddr.sin_family = AF_INET;
     daddr.sin_addr.s_addr = inet_addr(PC_ADDRESS.c_str());
-    daddr.sin_port = htons(ATTPORT);
+    daddr.sin_port = htons(REMOTE_PORT_DATA);
 
     attitude_msg att_out;
     memset(&att_out, 0x00, sizeof(attitude_msg));
@@ -132,7 +132,7 @@ void __attribute__((noreturn)) imu_task()
     double yaw = 0.0;
     double t0 = -1;
     double dt_s = 0;
-    while(1)
+    while (1)
     {
         memset(&imu_out, 0x00, imu_msg_dim);
         ssize_t lenread = recv(melopero_interface, &imu_out, imu_msg_dim, 0);
@@ -169,9 +169,9 @@ void __attribute__((noreturn)) imu_task()
             t0 = act_t;
             
             double q[4];
-	        Est->getAttitude(q);
-	        
-	        att_out.header.msg_id = ATTITUDE_MSG_ID;
+	    Est->getAttitude(q);
+	    
+	    att_out.header.msg_id = ATTITUDE_MSG_ID;
             att_out.yaw = yaw;
             att_out.pitch = Est->fusedPitch();
             att_out.roll = Est->fusedRoll();

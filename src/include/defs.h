@@ -27,12 +27,10 @@
 #define OK_RADIATION "Received RADIATION msg"
 #define OK_IMAGE "Received IMAGE msg"
 
-#define ATTPORT 1111
-#define RENPORT 2222
-#define JOYPORT 3333
-#define TGTPORT 4444
-#define VLTPORT 5555
-#define DETPORT 9999 //tx to tegra
+#define LOCAL_PORT_IMU		7777
+#define REMOTE_PORT_DATA        8888
+#define REMOTE_PORT_VIDEO_PC    2222
+#define REMOTE_PORT_VIDEO_TEGRA 9999
 
 #define VOLTAGE_MSG_ID          1
 #define ATTITUDE_MSG_ID         2
@@ -92,6 +90,12 @@ typedef struct __attribute__((packed))
     int8_t y_axis;
     bool start_flag;
     bool stop_flag;
+    bool left_light_on;
+    bool left_light_off;
+    bool right_light_on;
+    bool right_light_off;
+    bool central_light_on;
+    bool central_light_off;
 }  joystick_msg;
 
 typedef struct __attribute__((packed))

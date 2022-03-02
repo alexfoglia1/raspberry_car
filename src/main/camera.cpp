@@ -40,12 +40,12 @@ void __attribute__((noreturn)) camera_task()
 
     pcaddr.sin_family = AF_INET;
     pcaddr.sin_addr.s_addr = inet_addr(PC_ADDRESS.c_str());
-    pcaddr.sin_port = htons(RENPORT);
-    
+    pcaddr.sin_port = htons(REMOTE_PORT_VIDEO_PC);
+
     detaddr.sin_family = AF_INET;
     detaddr.sin_addr.s_addr = inet_addr(TEGRA_ADDRESS.c_str());
-    detaddr.sin_port = htons(DETPORT);
-	
+    detaddr.sin_port = htons(REMOTE_PORT_VIDEO_TEGRA);
+
     cv::Mat frame;
     while (1)
     {
@@ -61,7 +61,7 @@ void __attribute__((noreturn)) camera_task()
         std::vector<uint8_t> buffer;
         
         params.push_back(cv::IMWRITE_JPEG_QUALITY);
-        params.push_back(40);
+        params.push_back(75);
         cv::imencode(".jpg", frame, buffer, params);
 
         image_msg outmsg;
@@ -75,15 +75,18 @@ void __attribute__((noreturn)) camera_task()
         tx_to_detector +=1;
         if (tx_to_detector == 10)
         {
-            if (sendto(sock_to_detector, reinterpret_cast<char*>(&outmsg), outmsg.len, 0, reinterpret_cast<struct sockaddr*>(&detaddr), sizeof(detaddr)) <= 0)
+            if (true)
             {
-                perror("Camera task to DETECTOR\n");
-            }
+                if (sendto(sock_to_detector, reinterpret_cast<char*>(&outmsg), outmsg.len, 0, reinterpret_cast<struct sockaddr*>(&detaddr), sizeof(detaddr)) <= 0)
+                {
+                    perror("Camera task to DETECTOR\n");
+                }
 
-            tx_to_detector = 0;
+                tx_to_detector = 0;
+            }
         }
 
-        if (sendto(sock, reinterpret_cast<char*>(&outmsg), sizeof(outmsg), 0, reinterpret_cast<struct sockaddr*>(&pcaddr), sizeof(pcaddr)) > 0)
+        if (sendto(sock, reinterpret_cast<char*>(&outmsg), sizeof(outmsg), 0, reinterpret_cast<struct sockaddr*>(&pcaddr), sizeof(pcaddr)) <= 0)
         {
             perror("Camera task to PC");
         }
