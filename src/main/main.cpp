@@ -3,6 +3,7 @@
 #include "actuators.h"
 #include "motors.h"
 #include "defs.h"
+#include "lights.h"
 
 #include <iostream>
 #include <unistd.h>
@@ -23,6 +24,7 @@ void on_sigterm(int pid)
 
     std::cout << "Emergency exit" << std::endl;
     stop_motors();
+    shutdown_lights();
     kill(0, SIGKILL);
 }
 
@@ -66,6 +68,8 @@ int main(int argc, char** argv)
 
     signal(SIGTERM, on_sigterm);
 
+    light_boot_sequence();
+    
     int pid = fork();
     if(pid == 0)
     {

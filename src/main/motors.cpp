@@ -1,4 +1,5 @@
 #include "motors.h"
+#include "lights.h"
 
 #include <unistd.h>
 #include <wiringPi.h>
@@ -22,6 +23,8 @@ void init_motors()
 
     softPwmCreate(ENABLE_LEFT, MIN_SPEED, MAX_SPEED);
     softPwmCreate(ENABLE_RIGHT, MIN_SPEED, MAX_SPEED);
+
+    light_motors_on_sequence();
 }
 
 void stop_motors()
@@ -33,6 +36,8 @@ void stop_motors()
     
     softPwmWrite(ENABLE_LEFT,  0x00);
     softPwmWrite(ENABLE_RIGHT, 0x00);
+
+    light_motors_off_sequence();
 }
 
 void motors_forward()

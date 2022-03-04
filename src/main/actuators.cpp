@@ -172,10 +172,8 @@ void __attribute__((noreturn)) actuators_task(int millis)
     memset(&js_state, 0x00, sizeof(joystick_msg));
     pthread_t thread;
     pthread_create(&thread, NULL, listener, NULL);
-    
     while (1)
     {
-
         usleep(millis * 1000);
         while (!event_queue.empty())
         {

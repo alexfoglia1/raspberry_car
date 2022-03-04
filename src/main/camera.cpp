@@ -19,6 +19,7 @@
 #include <unistd.h>
 
 #include "defs.h"
+#include "lights.h"
 
 static int tx_to_detector = 0;
 
@@ -27,6 +28,7 @@ void __attribute__((noreturn)) camera_task()
     cv::VideoCapture capture(0);
     if (!capture.isOpened())
     {
+        light_camera_failure_sequence();
         exit(EXIT_FAILURE);
     }
 
@@ -51,6 +53,7 @@ void __attribute__((noreturn)) camera_task()
     {
         if (!capture.read(frame))
         {
+            light_camera_failure_sequence();
             exit(EXIT_FAILURE);
         }
 
@@ -79,7 +82,7 @@ void __attribute__((noreturn)) camera_task()
             {
                 if (sendto(sock_to_detector, reinterpret_cast<char*>(&outmsg), outmsg.len, 0, reinterpret_cast<struct sockaddr*>(&detaddr), sizeof(detaddr)) <= 0)
                 {
-                    perror("Camera task to DETECTOR\n");
+                    light_camera_failure_sequence();
                 }
 
                 tx_to_detector = 0;
@@ -88,7 +91,7 @@ void __attribute__((noreturn)) camera_task()
 
         if (sendto(sock, reinterpret_cast<char*>(&outmsg), sizeof(outmsg), 0, reinterpret_cast<struct sockaddr*>(&pcaddr), sizeof(pcaddr)) <= 0)
         {
-            perror("Camera task to PC");
+            light_camera_failure_sequence();
         }
     }
 }

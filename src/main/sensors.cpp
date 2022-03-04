@@ -1,6 +1,7 @@
 #include "sensors.h"
 #include "defs.h"
 #include "attitude_estimator.h"
+#include "lights.h"
 
 #include <stdio.h>
 #include <unistd.h>
@@ -38,11 +39,17 @@ float read_voltage(int fd)
     memset(buf, 0x00, 256);
 
     ssize_t lenread = read(fd, buf, 1);
-    while(lenread >= 0 && !strends(buf, "\n\n", lenread, 2))
+    if (lenread <= 0)
+    {
+        light_arduino_failure_sequence();
+        return 0.0;
+    }
+
+    while (lenread > 0 && !strends(buf, "\n\n", lenread, 2))
     {
         lenread += read(fd, buf + lenread, 1);
     }
-
+    
     return atof(buf) * MAX_READABLE_VOLTAGE_V;
 }
 
@@ -180,7 +187,7 @@ void __attribute__((noreturn)) imu_task()
         }
         else if(lenread < 0)
         {
-            perror("IMU task");
+            light_imu_failure_sequence();
             exit(EXIT_FAILURE);
         }
 

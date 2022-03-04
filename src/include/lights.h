@@ -14,4 +14,13 @@ void central_light_on();
 void central_light_off();
 void shutdown_lights();
 
+void light_boot_sequence();
+void light_motors_on_sequence();
+void light_motors_off_sequence();
+void light_imu_failure_sequence();
+void light_arduino_failure_sequence();
+void light_camera_failure_sequence();
+void light_no_network_sequence();
+
+
 #endif
