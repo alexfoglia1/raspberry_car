@@ -190,7 +190,7 @@ void __attribute__((noreturn)) imu_task()
 
 		vel_x += (accx * dt_s);
 		vel_y += (accy * dt_s);
-  	
+  	        printf("x'(%d) y'(%d)\n", vel_x, vel_y);
 		
         }
         else if(lenread < 0)
