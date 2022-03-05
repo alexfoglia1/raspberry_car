@@ -139,6 +139,8 @@ void __attribute__((noreturn)) imu_task()
     double yaw = 0.0;
     double t0 = -1;
     double dt_s = 0;
+	double vel_x = 0;
+	double vel_y = 0;
     while (1)
     {
         memset(&imu_out, 0x00, imu_msg_dim);
@@ -184,6 +186,12 @@ void __attribute__((noreturn)) imu_task()
             att_out.roll = Est->fusedRoll();
             
             sendto(sock, reinterpret_cast<char*>(&att_out), sizeof(attitude_msg), 0, reinterpret_cast<struct sockaddr*>(&daddr), sizeof(struct sockaddr));
+
+
+		vel_x += (accx * dt_s);
+		vel_y += (accy * dt_s);
+  	
+		
         }
         else if(lenread < 0)
         {
