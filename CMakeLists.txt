@@ -16,6 +16,7 @@ ${CMAKE_SOURCE_DIR}/src/include/actuators.h
 ${CMAKE_SOURCE_DIR}/src/include/motors.h
 ${CMAKE_SOURCE_DIR}/src/include/lights.h
 ${CMAKE_SOURCE_DIR}/src/include/attitude_estimator.h
+${CMAKE_SOURCE_DIR}/src/include/web_service.h
 
 ${CMAKE_SOURCE_DIR}/src/main/sensors.cpp
 ${CMAKE_SOURCE_DIR}/src/main/camera.cpp
@@ -23,6 +24,7 @@ ${CMAKE_SOURCE_DIR}/src/main/actuators.cpp
 ${CMAKE_SOURCE_DIR}/src/main/lights.cpp
 ${CMAKE_SOURCE_DIR}/src/main/motors.cpp
 ${CMAKE_SOURCE_DIR}/src/main/attitude_estimator.cpp
+${CMAKE_SOURCE_DIR}/src/main/web_service.cpp
 
 ${CMAKE_SOURCE_DIR}/src/main/main.cpp
 )

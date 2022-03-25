@@ -64,7 +64,7 @@ void __attribute__((noreturn)) camera_task()
         std::vector<uint8_t> buffer;
         
         params.push_back(cv::IMWRITE_JPEG_QUALITY);
-        params.push_back(75);
+        params.push_back(60);
         cv::imencode(".jpg", frame, buffer, params);
 
         image_msg outmsg;

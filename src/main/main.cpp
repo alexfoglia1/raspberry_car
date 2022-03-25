@@ -4,6 +4,7 @@
 #include "motors.h"
 #include "defs.h"
 #include "lights.h"
+#include "web_service.h"
 
 #include <iostream>
 #include <unistd.h>
@@ -78,6 +79,13 @@ int main(int argc, char** argv)
     }
 
     pid = fork();
+    if (pid == 0)
+    {
+        service_task();
+        exit(EXIT_SUCCESS);
+    }
+
+    pid = fork();
     if(pid == 0)
     {
 	
@@ -109,6 +117,7 @@ int main(int argc, char** argv)
     std::cout << "Tasks are running . . ." << std::endl;
 
     int canExit;
+    wait(&canExit);
     wait(&canExit);
     wait(&canExit);
     wait(&canExit);
