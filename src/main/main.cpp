@@ -8,7 +8,6 @@
 
 #include <iostream>
 #include <unistd.h>
-#include <signal.h>
 #include <stdlib.h>
 #include <wait.h>
 #include <wiringPi.h>
@@ -17,18 +16,6 @@
 
 std::string PC_ADDRESS("192.168.1.19");
 std::string TEGRA_ADDRESS("192.168.1.51");
-
-
-void on_sigterm(int pid)
-{
-    __UNUSED__(&pid);
-
-    std::cout << "Emergency exit" << std::endl;
-    stop_motors();
-    shutdown_lights();
-    kill(0, SIGKILL);
-}
-
 
 int main(int argc, char** argv)
 {
@@ -67,25 +54,9 @@ int main(int argc, char** argv)
         std::cout << "TEGRA ADDRESS(" << TEGRA_ADDRESS << ")" << std::endl;
     }
 
-    signal(SIGTERM, on_sigterm);
-
     light_boot_sequence();
-    
+
     int pid = fork();
-    if(pid == 0)
-    {
-        system("python3 /home/pi/git/imu_driver/imu_driver.py");
-        exit(EXIT_SUCCESS);
-    }
-
-    pid = fork();
-    if (pid == 0)
-    {
-        service_task();
-        exit(EXIT_SUCCESS);
-    }
-
-    pid = fork();
     if(pid == 0)
     {
 	
@@ -117,8 +88,6 @@ int main(int argc, char** argv)
     std::cout << "Tasks are running . . ." << std::endl;
 
     int canExit;
-    wait(&canExit);
-    wait(&canExit);
     wait(&canExit);
     wait(&canExit);
     wait(&canExit);

@@ -44,9 +44,10 @@ float read_voltage(int fd)
         light_arduino_failure_sequence();
         return 0.0;
     }
-
-    while (lenread > 0 && !strends(buf, "\n\n", lenread, 2))
+    
+    while (lenread > 0 && !strends(buf, "\n", lenread, 1))
     {
+        
         lenread += read(fd, buf + lenread, 1);
     }
     

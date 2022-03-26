@@ -1,0 +1,11 @@
+[Unit]
+Description="LSM9DS1 IMU Driver"
+
+[Service]
+User=pi
+WorkingDirectory=/home/pi/git/raspberry_car/src/py_modules/
+ExecStart=/usr/bin/python3 imu_driver.py
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

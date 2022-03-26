@@ -1,3 +1,0 @@
-/home/pi/git/raspberry_car/CMakeFiles/rebuild_cache.dir
-/home/pi/git/raspberry_car/CMakeFiles/raspberry_car.dir
-/home/pi/git/raspberry_car/CMakeFiles/edit_cache.dir

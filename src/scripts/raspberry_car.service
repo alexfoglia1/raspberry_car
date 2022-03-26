@@ -1,0 +1,9 @@
+[Unit]
+Description="Raspberry Car service"
+
+[Service]
+WorkingDirectory=/home/pi/git/raspberry_car/build/
+ExecStart=/home/pi/git/raspberry_car/src/scripts/raspi_car.sh
+
+[Install]
+WantedBy=multi-user.target
