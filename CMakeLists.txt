@@ -9,22 +9,22 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 add_executable(
 raspberry_car
-${CMAKE_SOURCE_DIR}/src/include/defs.h
-${CMAKE_SOURCE_DIR}/src/include/sensors.h
-${CMAKE_SOURCE_DIR}/src/include/camera.h
-${CMAKE_SOURCE_DIR}/src/include/actuators.h
-${CMAKE_SOURCE_DIR}/src/include/motors.h
-${CMAKE_SOURCE_DIR}/src/include/lights.h
-${CMAKE_SOURCE_DIR}/src/include/attitude_estimator.h
+${CMAKE_SOURCE_DIR}/src/raspberry_car/include/defs.h
+${CMAKE_SOURCE_DIR}/src/raspberry_car/include/sensors.h
+${CMAKE_SOURCE_DIR}/src/raspberry_car/include/camera.h
+${CMAKE_SOURCE_DIR}/src/raspberry_car/include/actuators.h
+${CMAKE_SOURCE_DIR}/src/raspberry_car/include/motors.h
+${CMAKE_SOURCE_DIR}/src/raspberry_car/include/lights.h
+${CMAKE_SOURCE_DIR}/src/raspberry_car/include/attitude_estimator.h
 
-${CMAKE_SOURCE_DIR}/src/main/sensors.cpp
-${CMAKE_SOURCE_DIR}/src/main/camera.cpp
-${CMAKE_SOURCE_DIR}/src/main/actuators.cpp
-${CMAKE_SOURCE_DIR}/src/main/lights.cpp
-${CMAKE_SOURCE_DIR}/src/main/motors.cpp
-${CMAKE_SOURCE_DIR}/src/main/attitude_estimator.cpp
+${CMAKE_SOURCE_DIR}/src/raspberry_car/main/sensors.cpp
+${CMAKE_SOURCE_DIR}/src/raspberry_car/main/camera.cpp
+${CMAKE_SOURCE_DIR}/src/raspberry_car/main/actuators.cpp
+${CMAKE_SOURCE_DIR}/src/raspberry_car/main/lights.cpp
+${CMAKE_SOURCE_DIR}/src/raspberry_car/main/motors.cpp
+${CMAKE_SOURCE_DIR}/src/raspberry_car/main/attitude_estimator.cpp
 
-${CMAKE_SOURCE_DIR}/src/main/main.cpp
+${CMAKE_SOURCE_DIR}/src/raspberry_car/main/main.cpp
 )
 
 find_package(OpenCV REQUIRED)
@@ -36,7 +36,7 @@ target_link_libraries(raspberry_car ${WIRINGPI_LIBRARIES})
 target_link_libraries(raspberry_car ${CMAKE_THREAD_LIBS_INIT})
 target_link_libraries(raspberry_car ${OpenCV_LIBS})
 target_link_libraries(raspberry_car pthread)
-target_include_directories(raspberry_car PRIVATE ${CMAKE_SOURCE_DIR}/src/include)
+target_include_directories(raspberry_car PRIVATE ${CMAKE_SOURCE_DIR}/src/raspberry_car/include)
 
 
 

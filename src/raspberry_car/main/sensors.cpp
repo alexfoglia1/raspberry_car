@@ -45,7 +45,7 @@ float read_voltage(int fd)
         return 0.0;
     }
     
-    while (lenread > 0 && !strends(buf, "\n", lenread, 1))
+    while (lenread > 0 && !strends(buf, "\n\n", lenread, 2))
     {
         
         lenread += read(fd, buf + lenread, 1);

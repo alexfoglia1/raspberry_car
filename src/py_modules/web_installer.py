@@ -42,15 +42,15 @@ class MyServer(BaseHTTPRequestHandler):
         with open("../firmware/firmware.ino", "wb") as f:
             f.write(content)
             
-        os.system("systemctl stop raspberry_car")
-        os.system("arduino-cli compile -b arduino:megaavr:nona4809 ../firmware/firmware.ino")
-        os.system("arduino-cli upload -b arduino:megaavr:nona4809 -p /dev/ttyACM0 ../firmware/firmware.ino")
-        os.system("systemctl restart raspberry_car")
+        os.system("sudo systemctl stop raspberry_car")
+        os.system("arduino-cli compile --upload ../firmware/firmware.ino --port /dev/ttyACM0 --fqbn arduino:megaavr:nona4809")
 
         self.send_response(200)
         self.send_header("Content-type", "text/html")
         self.end_headers()
         self.wfile.write(bytes(html_page[1], "utf-8"))
+        
+        os.system("sudo reboot now")
 
 if __name__ == "__main__":        
     webServer = HTTPServer((hostName, serverPort), MyServer)
