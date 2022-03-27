@@ -4,7 +4,6 @@
 #include "motors.h"
 #include "defs.h"
 #include "lights.h"
-#include "web_service.h"
 
 #include <iostream>
 #include <unistd.h>
@@ -15,16 +14,14 @@
 #include <fstream>
 
 std::string PC_ADDRESS("192.168.1.19");
-std::string TEGRA_ADDRESS("192.168.1.51");
 
 int main(int argc, char** argv)
 {
     std::cout << PROJNAME << std::endl;
 
-    if (argc >= 3)
+    if (argc >= 2)
     {
         PC_ADDRESS = argv[1];
-        TEGRA_ADDRESS = argv[2];
     }
     else
     {
@@ -45,13 +42,8 @@ int main(int argc, char** argv)
         {
             PC_ADDRESS = line[0];
         }
-        if(line[1].length() > 0)
-        {
-            TEGRA_ADDRESS = line[1];
-        }
 
         std::cout << "PC ADDRESS(" << PC_ADDRESS << ")" << std::endl;
-        std::cout << "TEGRA ADDRESS(" << TEGRA_ADDRESS << ")" << std::endl;
     }
 
     light_boot_sequence();

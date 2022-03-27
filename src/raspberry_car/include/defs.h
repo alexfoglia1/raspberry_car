@@ -27,10 +27,9 @@
 #define OK_RADIATION "Received RADIATION msg"
 #define OK_IMAGE "Received IMAGE msg"
 
-#define LOCAL_PORT_IMU		7777
+#define LOCAL_PORT_IMU		    7777
 #define REMOTE_PORT_DATA        8888
 #define REMOTE_PORT_VIDEO_PC    2222
-#define REMOTE_PORT_VIDEO_TEGRA 9999
 
 #define VOLTAGE_MSG_ID          1
 #define ATTITUDE_MSG_ID         2
@@ -43,19 +42,12 @@
 #define IMAGE_ROWS    650
 #define IMAGE_COLS    1200
 
-#define BREAK_THRESHOLD_DIR_STRAIGHT 0x20
-#define BREAK_THRESHOLD_DIR_LATERAL  0x40
-#define THROTTLE_MAX 0x7F
-#define THROTTLE_MIN 0x70
-#define MAX_TARGETS 10
-
 #define __UNUSED__(x) (*x)
 
 #include <stdint.h>
 #include <string>
 
 extern std::string PC_ADDRESS;
-extern std::string TEGRA_ADDRESS;
 
 typedef struct
 {
