@@ -1,10 +1,10 @@
 [Unit]
-Description="Arduino FW Upload service"
+Description="Raspberry Car Web Service"
 
 [Service]
 User=pi
 WorkingDirectory=/home/pi/git/raspberry_car/src/py_modules/
-ExecStart=/usr/bin/python3 web_installer.py
+ExecStart=/usr/bin/python3 web_service.py
 Restart=always
 
 [Install]
