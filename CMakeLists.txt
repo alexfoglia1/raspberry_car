@@ -37,6 +37,3 @@ target_link_libraries(raspberry_car ${CMAKE_THREAD_LIBS_INIT})
 target_link_libraries(raspberry_car ${OpenCV_LIBS})
 target_link_libraries(raspberry_car pthread)
 target_include_directories(raspberry_car PRIVATE ${CMAKE_SOURCE_DIR}/src/raspberry_car/include)
-
-
-
