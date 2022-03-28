@@ -2,7 +2,7 @@
 #define MOTORS_H
 #include <stdint.h>
 
-#define ENABLE_RIGHT    15
+#define ENABLE_RIGHT    4
 #define MOTOR_RIGHT1    1
 #define MOTOR_RIGHT2    16
 #define ENABLE_LEFT     0

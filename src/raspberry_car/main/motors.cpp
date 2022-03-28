@@ -19,7 +19,6 @@ void init_motors()
     pinMode(MOTOR_LEFT2, OUTPUT);
     pinMode(MOTOR_RIGHT1, OUTPUT);
     pinMode(MOTOR_RIGHT2, OUTPUT);
-    pinMode(29, OUTPUT);
 
     softPwmCreate(ENABLE_LEFT, MIN_SPEED, MAX_SPEED);
     softPwmCreate(ENABLE_RIGHT, MIN_SPEED, MAX_SPEED);
