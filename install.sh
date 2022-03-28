@@ -4,6 +4,12 @@ echo "**** INSTALLING RASPBERRY CAR ****"
 echo ""
 echo "Compiling..."
 echo ""
+
+builddir=$PWD/build
+if test -d "$builddir"; then
+    rm -fr "$builddir"
+fi
+
 mkdir build
 cd build
 cmake ..
