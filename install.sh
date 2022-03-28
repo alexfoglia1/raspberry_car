@@ -20,22 +20,28 @@ imuserv=/etc/systemd/system/imu-service.service
 carserv=/etc/systemd/system/raspberry-car.service
 
 if test -f "$webserv"; then
+    sudo systemctl stop web-service
     echo "$webserv exists: removing old web service installation"
     sudo systemctl disable web-service
     sudo rm -fr "$webserv"
+    sudo systemctl daemon-reload
 fi
 
 if test -f "$imuserv"; then
-    sudo systemctl disable imu-service
+    sudo systemctl stop imu-service
     echo "$imuserv exists: removing old imu service installation"
+    sudo systemctl disable imu-service
     sudo rm -fr "$imuserv"
+    sudo systemctl daemon-reload
 fi
 
 
 if test -f "$carserv"; then
-    sudo systemctl disable raspberry-car
+    sudo systemctl stop raspberry-car
     echo "$carserv exists: removing old raspberry-car service installation"
+    sudo systemctl disable raspberry-car
     sudo rm -fr "$carserv"
+    sudo systemctl daemon-reload
 fi
 
 sudo sh install-services.sh
