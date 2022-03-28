@@ -1,35 +1,11 @@
 #ifndef DEFS_H
 #define DEFS_H
 
-#define PROJNAME "Raspberry PI 4 Car v01.01"
-
-#define ERR_CREATESOCKDATA "Could not create data socket"
-#define ERR_BINDSOCKDATA "Could not bind data socket"
-#define ERR_RECVSOCKDATA "Could not receive from data socket"
-#define ERR_CREATESOCKVIDEO "Could not create video socket"
-#define ERR_BINDSOCKVIDEO "Could not bind video socket"
-#define ERR_RECVSOCKVIDEO "Could not receive from video socket"
-#define ERR_UNINITIALIZED_SOCKET "Cannot receive: socket uninitialized"
-
-#define OK_CREATESOCKDATA "Data server socket was successfully created"
-#define OK_BINDSOCKDATA "Data server socket was successfully binded"
-#define OK_CREATESOCKVIDEO "Video server socket was successfully created"
-#define OK_BINDSOCKVIDEO "Video server socket was successfully binded"
-#define OK_CAN_RECEIVE_DATA "Waiting for data"
-#define OK_CAN_RECEIVE_VIDEO "Waiting for video"
-#define OK_RECVSOCKDATA "Received data from data socket"
-#define OK_RECVSOCKVIDEO "Received data from video socket"
-
-#define ERR_UNKNOWN_SOURCE "Received message from unknown source"
-#define OK_IMU "Received IMU msg"
-#define OK_SPEED "Received SPEED msg"
-#define OK_ATTITUDE "Received ATTITUDE msg"
-#define OK_RADIATION "Received RADIATION msg"
-#define OK_IMAGE "Received IMAGE msg"
+#define PROJNAME "Raspberry PI 4 Car 01.00-R"
 
 #define LOCAL_PORT_IMU		    7777
-#define REMOTE_PORT_DATA        8888
-#define REMOTE_PORT_VIDEO_PC    2222
+#define REMOTE_PORT_DATA            8888
+#define REMOTE_PORT_VIDEO_PC        2222
 
 #define VOLTAGE_MSG_ID          1
 #define ATTITUDE_MSG_ID         2
