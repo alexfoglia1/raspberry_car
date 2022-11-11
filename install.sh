@@ -14,7 +14,7 @@ mkdir build
 cd build
 cmake ..
 make all
-echo "127.0.0.1" > settings.ini
+echo "192.168.1.4" > settings.ini
 cd ../src/scripts/
 
 echo ""
