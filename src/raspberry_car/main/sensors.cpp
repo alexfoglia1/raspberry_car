@@ -16,7 +16,7 @@
 #define M_PI 3.141592653589793
 #define RAD_2_DEG(rad) (rad*180.0/M_PI)
 #define DEG_2_RAD(deg) (deg*M_PI/180.0)
-#define MAX_READABLE_VOLTAGE_V 10.f //todo: se questa cosa cambia rivedi il partitore di tensione perchè attualmente divide per 2 :(
+#define MAX_READABLE_VOLTAGE_V 20.f //todo: se questa cosa cambia rivedi il partitore di tensione perchè attualmente divide per 4 :(
 
 bool strends(char* str, const char* tok, ssize_t lenstr, ssize_t lentok)
 {
@@ -51,6 +51,8 @@ float read_voltage(int fd)
         lenread += read(fd, buf + lenread, 1);
     }
     
+    //printf("read %f V\n", atof(buf) * MAX_READABLE_VOLTAGE_V);
+
     return atof(buf) * MAX_READABLE_VOLTAGE_V;
 }
 
@@ -111,14 +113,14 @@ double timestamp()
 
 void __attribute__((noreturn)) imu_task()
 {
-    int melopero_interface = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    int mpu_interface = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     struct sockaddr_in saddr;
     memset(&saddr, 0x00, sizeof(struct sockaddr_in));
     saddr.sin_family = AF_INET;
     saddr.sin_addr.s_addr = INADDR_ANY;
     saddr.sin_port = htons(LOCAL_PORT_IMU);
 
-    bind(melopero_interface, reinterpret_cast<struct sockaddr*>(&saddr), sizeof(struct sockaddr));
+    bind(mpu_interface, reinterpret_cast<struct sockaddr*>(&saddr), sizeof(struct sockaddr));
 
     int sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     struct sockaddr_in daddr;
@@ -145,7 +147,7 @@ void __attribute__((noreturn)) imu_task()
     while (1)
     {
         memset(&imu_out, 0x00, imu_msg_dim);
-        ssize_t lenread = recv(melopero_interface, &imu_out, imu_msg_dim, 0);
+        ssize_t lenread = recv(mpu_interface, &imu_out, imu_msg_dim, 0);
         if (lenread  > 0)
         {
             double msg_timestamp = *reinterpret_cast<double*>(&imu_out[4]);
@@ -171,6 +173,8 @@ void __attribute__((noreturn)) imu_task()
             double magny = *reinterpret_cast<double*>(&imu_out[68]);
             double magnz = *reinterpret_cast<double*>(&imu_out[76]);
             
+            printf("acc x(%f), acc y(%f) acc z(%f)\n", accx, accy, accz);
+
             double act_t = timestamp();
             dt_s = t0 < 0 ? 1.0/80.0 : act_t - t0;
 
