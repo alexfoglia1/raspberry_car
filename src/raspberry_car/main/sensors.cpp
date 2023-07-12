@@ -18,41 +18,54 @@
 #define DEG_2_RAD(deg) (deg*M_PI/180.0)
 #define MAX_READABLE_VOLTAGE_V 10.f //todo: se questa cosa cambia rivedi il partitore di tensione perchè attualmente divide per 2 ed è bene rimanga cosi
 
-bool strends(char* str, const char* tok, ssize_t lenstr, ssize_t lentok)
+#define WAIT_ARDUINO_SYNC    0
+#define WAIT_ARDUINO_BYTE_0  1
+#define WAIT_ARDUINO_BYTE_1  2
+#define WAIT_ARDUINO_BYTE_2  3
+#define WAIT_ARDUINO_BYTE_3  4
+
+nano_msg_in voltage_in;
+int read_voltage_status;
+
+bool read_voltage(int fd)
 {
-    for(int i = 0; i < lentok; i++)
+    bool res = false;
+    uint8_t byteIn;
+    ssize_t lenread = read(fd, &byteIn, 1);
+    if (lenread > 0)
     {
-        bool equality = str[lenstr - i - 1] == tok[lentok - i - 1];
-        if(!equality)
+        switch (read_voltage_status)
         {
-            return false;
+            case WAIT_ARDUINO_SYNC:
+                voltage_in.sync = byteIn;
+                if (voltage_in.sync == 0xff)
+                {
+                    read_voltage_status = WAIT_ARDUINO_BYTE_0;
+                }
+                break;
+           case WAIT_ARDUINO_BYTE_0:
+                voltage_in.voltage_data.bytes.byte_1 = byteIn;
+                read_voltage_status = WAIT_ARDUINO_BYTE_1;
+                break;
+           case WAIT_ARDUINO_BYTE_1:
+                voltage_in.voltage_data.bytes.byte_2 = byteIn;
+                read_voltage_status = WAIT_ARDUINO_BYTE_2;
+                break;
+           case WAIT_ARDUINO_BYTE_2:
+                voltage_in.voltage_data.bytes.byte_3 = byteIn;
+                read_voltage_status = WAIT_ARDUINO_BYTE_3;
+                break;
+           case WAIT_ARDUINO_BYTE_3:
+                voltage_in.voltage_data.bytes.byte_4 = byteIn;
+                res = true;
+                read_voltage_status = WAIT_ARDUINO_SYNC;
+                break;
+           default: break;
         }
     }
 
-    return true;
-}
 
-float read_voltage(int fd)
-{
-    char buf[256];
-
-    memset(buf, 0x00, 256);
-
-    ssize_t lenread = read(fd, buf, 1);
-    if (lenread <= 0)
-    {
-        light_arduino_failure_sequence();
-        return 0.0;
-    }
-    
-    while (lenread > 0 && !strends(buf, "\n", lenread, 1))
-    {
-        lenread += read(fd, buf + lenread, 1);
-    }
-    
-    //printf("read %f V\n", atof(buf) * MAX_READABLE_VOLTAGE_V);
-
-    return atof(buf) * MAX_READABLE_VOLTAGE_V;
+    return res;
 }
 
 void init_serial(int fd)
@@ -81,6 +94,10 @@ void init_serial(int fd)
 
 void __attribute__((noreturn)) voltage_task()
 {
+    voltage_in.sync = 0x00;
+    voltage_in.voltage_data.fdata = 0.0f;
+    read_voltage_status = WAIT_ARDUINO_SYNC;
+
     int fd = open("/dev/ttyUSB0", O_RDONLY);
     init_serial(fd);
 
@@ -95,10 +112,13 @@ void __attribute__((noreturn)) voltage_task()
     memset(&voltage_out, 0x00, sizeof(voltage_msg));
     while(1)
     {
-         voltage_out.msg_id = VOLTAGE_MSG_ID;
-         voltage_out.motor_voltage = read_voltage(fd);
+         if (read_voltage(fd))
+         {
+             voltage_out.msg_id = VOLTAGE_MSG_ID;
+             voltage_out.motor_voltage = voltage_in.voltage_data.fdata * MAX_READABLE_VOLTAGE_V;
          
-         sendto(sock, reinterpret_cast<char*>(&voltage_out), sizeof(voltage_msg), 0, reinterpret_cast<struct sockaddr*>(&daddr), sizeof(struct sockaddr));
+             sendto(sock, reinterpret_cast<char*>(&voltage_out), sizeof(voltage_msg), 0, reinterpret_cast<struct sockaddr*>(&daddr), sizeof(struct sockaddr));
+         }
     }
 }
 

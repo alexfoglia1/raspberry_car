@@ -73,4 +73,20 @@ typedef struct __attribute__((packed))
     uint8_t system_state;
 } actuators_state_msg;
 
+typedef struct __attribute__((packed))
+{
+    uint8_t  sync;
+    union
+    {
+        struct
+        {
+            uint8_t byte_1;
+            uint8_t byte_2;
+            uint8_t byte_3;
+            uint8_t byte_4;
+        } bytes;
+        float fdata;
+    } voltage_data;
+} nano_msg_in;
+
 #endif //DEFS_H
