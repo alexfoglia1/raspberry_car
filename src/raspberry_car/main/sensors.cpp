@@ -173,7 +173,7 @@ void __attribute__((noreturn)) imu_task()
             double magny = *reinterpret_cast<double*>(&imu_out[68]);
             double magnz = *reinterpret_cast<double*>(&imu_out[76]);
             
-            printf("acc x(%f), acc y(%f) acc z(%f)\n", accx, accy, accz);
+            //printf("acc x(%f), acc y(%f) acc z(%f)\n", accx, accy, accz);
 
             double act_t = timestamp();
             dt_s = t0 < 0 ? 1.0/80.0 : act_t - t0;
