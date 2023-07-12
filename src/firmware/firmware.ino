@@ -5,7 +5,7 @@ void setup()
 
 void loop()
 {
-  int sensorValue = analogRead(A0);
+  int sensorValue = analogRead(A5);
   float vInPercentage = (float)sensorValue / 1023.f;
 
   Serial.println(vInPercentage);
