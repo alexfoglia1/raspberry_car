@@ -82,7 +82,7 @@ void init_serial(int fd)
 
 void __attribute__((noreturn)) voltage_task()
 {
-    int fd = open("/dev/ttyACM0", O_RDONLY);
+    int fd = open("/dev/ttyUSB0", O_RDONLY);
     init_serial(fd);
 
     int sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
