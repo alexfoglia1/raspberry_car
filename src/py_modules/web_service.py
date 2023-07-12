@@ -65,7 +65,7 @@ class MyServer(BaseHTTPRequestHandler):
                 f.write(content)
             
             os.system("sudo systemctl stop raspberry-car")
-            os.system("arduino-cli compile --upload ../firmware/firmware.ino --port /dev/ttyACM0 --fqbn arduino:megaavr:nona4809")
+            os.system("arduino-cli compile --upload ../firmware/firmware.ino --port /dev/ttyUSB0 --fqbn arduino:avr:nano:cpu=atmega328old")
 
             self.send_response(200)
             self.send_header("Content-type", "text/html")

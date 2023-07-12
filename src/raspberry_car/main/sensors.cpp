@@ -16,7 +16,7 @@
 #define M_PI 3.141592653589793
 #define RAD_2_DEG(rad) (rad*180.0/M_PI)
 #define DEG_2_RAD(deg) (deg*M_PI/180.0)
-#define MAX_READABLE_VOLTAGE_V 20.f //todo: se questa cosa cambia rivedi il partitore di tensione perchè attualmente divide per 4 :(
+#define MAX_READABLE_VOLTAGE_V 10.f //todo: se questa cosa cambia rivedi il partitore di tensione perchè attualmente divide per 2 ed è bene rimanga cosi
 
 bool strends(char* str, const char* tok, ssize_t lenstr, ssize_t lentok)
 {
@@ -51,7 +51,7 @@ float read_voltage(int fd)
         lenread += read(fd, buf + lenread, 1);
     }
     
-    //printf("read %f V\n", atof(buf) * MAX_READABLE_VOLTAGE_V);
+    printf("read %f V\n", atof(buf) * MAX_READABLE_VOLTAGE_V);
 
     return atof(buf) * MAX_READABLE_VOLTAGE_V;
 }
