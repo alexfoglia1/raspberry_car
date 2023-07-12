@@ -45,13 +45,12 @@ float read_voltage(int fd)
         return 0.0;
     }
     
-    while (lenread > 0 && !strends(buf, "\n\n", lenread, 2))
+    while (lenread > 0 && !strends(buf, "\n", lenread, 1))
     {
-        
         lenread += read(fd, buf + lenread, 1);
     }
     
-    printf("read %f V\n", atof(buf) * MAX_READABLE_VOLTAGE_V);
+    //printf("read %f V\n", atof(buf) * MAX_READABLE_VOLTAGE_V);
 
     return atof(buf) * MAX_READABLE_VOLTAGE_V;
 }
